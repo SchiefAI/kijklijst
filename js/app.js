@@ -280,7 +280,14 @@ function render() {
     const isDragMode = sortVal === 'custom';
 
     if (items.length === 0) {
-        grid.innerHTML = '<div class="empty-state">Geen resultaten gevonden</div>';
+        let emptyHtml = '<div class="empty-state">Geen resultaten gevonden';
+        if (query) {
+            const safe = query.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            emptyHtml += `<br><button class="empty-add-btn" onclick="openAdd('${safe}')">` +
+                         `"${safe}" toevoegen? +</button>`;
+        }
+        emptyHtml += '</div>';
+        grid.innerHTML = emptyHtml;
         return;
     }
 
@@ -529,12 +536,22 @@ const addTitleInput = document.getElementById('addTitle');
 const addSubmit = document.getElementById('addSubmit');
 const addExtraFields = document.getElementById('addExtraFields');
 
-function openAdd() {
+function openAdd(prefill = '') {
     addOverlay.classList.add('visible');
     fabBtn.classList.add('open');
     addExtraFields.classList.remove('visible');
     tmdbResultsEl.classList.remove('visible');
-    setTimeout(() => addTitleInput.focus(), 200);
+    if (prefill) {
+        addTitleInput.value = prefill;
+        setTimeout(() => {
+            addTitleInput.focus();
+            if (TMDB_KEY && prefill.length >= 2) {
+                addTitleInput.dispatchEvent(new Event('input'));
+            }
+        }, 200);
+    } else {
+        setTimeout(() => addTitleInput.focus(), 200);
+    }
 }
 function closeAdd() {
     addOverlay.classList.remove('visible');
