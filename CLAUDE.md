@@ -2,7 +2,7 @@
 
 ## Project
 
-**Mijn Kijklijst** is een persoonlijke film- en serie-watchlist PWA. Zero dependencies, vanilla HTML/CSS/JS, volledig offline bruikbaar. Titels worden gesynchroniseerd naar `data.js` via een lokale Python server; user-specifieke state (watched, ratings, volgorde) zit in localStorage.
+**Mijn Kijklijst** is een persoonlijke film- en serie-watchlist PWA. Zero dependencies, vanilla HTML/CSS/JS, volledig offline bruikbaar. Titels worden gesynchroniseerd naar `data.js` via een lokale Python server; user-specifieke state (watched, ratings, volgorde) wordt via de server opgeslagen in `state.json` zodat alle apparaten dezelfde state delen. localStorage dient als fallback wanneer de server niet bereikbaar is.
 
 ## Quickstart
 
@@ -16,11 +16,12 @@ python3 server.py 8000             # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~1425 regels)
+css/style.css       → Alle styling (één bestand, ~1497 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1058 regels)
-server.py           → Lokale Python server met /api/save endpoint
+js/app.js           → Alle applicatielogica (~1109 regels)
+server.py           → Lokale Python server met /api/save en /api/state endpoints
+state.json          → User state: watched, ratings, order, tmdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
 manifest.json       → PWA manifest (standalone, dark theme)
 icons/              → PWA iconen (192px, 512px)
@@ -32,11 +33,17 @@ start.command       → macOS dubbelklik-startscript (port 8000, via server.py)
 
 ### Data flow
 - `data.js` bevat het `DATA` array (ALLE titels) en `IMDB` mapping object — dit is de single source of truth voor titels
-- `server.py` draait als lokale HTTP server en biedt `POST /api/save` om data.js bij te werken
-- `app.js` laadt DATA bij opstart en synchroniseert wijzigingen (toevoegen/verwijderen) automatisch terug naar data.js via `syncToFile()`
-- User-specifieke state (watched, ratings, sort order, view mode, TMDB key) zit in localStorage
+- `state.json` bevat user state (watched, ratings, volgorde, TMDB key) — gedeeld tussen alle apparaten
+- `server.py` draait als lokale HTTP server en biedt:
+  - `POST /api/save` — schrijft data.js bij (titels toevoegen/verwijderen)
+  - `GET /api/state` — leest state.json (of `{}` als niet bestaat)
+  - `POST /api/state` — schrijft state.json bij (watched, ratings, order, tmdb_key)
+- `app.js` laadt DATA bij opstart en synchroniseert wijzigingen automatisch terug naar data.js via `syncToFile()`
+- Bij opstart: `loadState()` haalt state van server; als server leeg is wordt huidige localStorage geseeded naar server
+- Bij elke state-wijziging: `syncState()` POST de volledige state naar de server
+- View mode (grid/list) blijft bewust in localStorage (device-specifiek)
 - `render()` is de centrale functie — filtert, sorteert en rendert de hele grid
-- Als de server niet draait (bijv. via `file://`), valt de app terug op alleen-lezen mode — titels uit data.js worden getoond maar wijzigingen worden niet opgeslagen
+- Als de server niet draait (bijv. via `file://`), valt de app terug op alleen-lezen mode met localStorage als state-opslag
 
 ### CSS variabelen (design tokens)
 ```css
@@ -75,22 +82,21 @@ border: 1px solid rgba(255,255,255,.08);
 | Feature | Locatie in app.js |
 |---------|------------------|
 | syncToFile() (data.js sync) | Regels 1-14 |
-| Watched/Ratings/Order state | 16-38 |
-| TMDB key (localStorage) | 40-42 |
-| Star rating HTML helpers | ~97-142 |
-| View mode (grid/list) | ~144-150 |
-| Dynamic dropdown counts | ~187-227 |
-| Render (central, incl. empty-state + filter hints) | ~230-370 |
-| Star rating interaction | ~410-450 |
-| Sparkle effect (5 sterren) | ~452-470 |
-| Stat pills als filter shortcuts | ~495-510 |
-| resetFilters() | ~509-519 |
-| Hero poster mosaic builder | ~530-555 |
-| Add title modal + TMDB | ~561-1035 |
-| openAdd() (met prefill + directe TMDB search) | ~561-580 |
-| Random picker | ~620-740 |
-| Drag-and-drop (desktop + touch) | ~742-900 |
-| TMDB auto-complete | ~910-1058 |
+| State vars + save functies + syncState/loadState | 16-78 |
+| Star rating HTML helpers | ~133-178 |
+| View mode (grid/list) | ~180-187 |
+| Dynamic dropdown counts | ~224-264 |
+| Render (central, incl. empty-state + filter hints) | ~267-411 |
+| Star rating interaction | ~451-471 |
+| Sparkle effect (5 sterren) | ~490-506 |
+| Stat pills als filter shortcuts | ~542-556 |
+| resetFilters() | ~558-568 |
+| Hero poster mosaic builder | ~577-601 |
+| Add title modal + TMDB | ~610-1082 |
+| openAdd() (met prefill + directe TMDB search) | ~610-630 |
+| Random picker | ~699-788 |
+| Drag-and-drop (desktop + touch) | ~796-951 |
+| TMDB auto-complete | ~956-1095 |
 
 ## Conventies
 
@@ -116,7 +122,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → verander `'kijklijst-v3'` naar `'kijklijst-v4'` etc.
+- **Bump na elke wijziging** aan static assets → verander `'kijklijst-v5'` naar `'kijklijst-v6'` etc.
 - Cache strategieën:
   - Static assets → cache-first
   - Google Fonts → cache-first
@@ -146,6 +152,7 @@ SVG film reels in index.html als `.film-reel--left` en `.film-reel--right`. Subt
 
 - **Geen npm/node_modules** — dit is een zero-dependency project
 - **Geen data.js committen** — bevat persoonlijke titels, staat in .gitignore
-- **Geen API keys in code** — TMDB key zit in localStorage
+- **Geen state.json committen** — bevat persoonlijke state, staat in .gitignore
+- **Geen API keys in code** — TMDB key zit in state.json/localStorage
 - **Geen externe CSS/JS** — behalve Google Fonts CDN
-- **Geen localStorage wissen** zonder backup — dat is alle gebruikersdata
+- **Geen state.json of localStorage wissen** zonder backup — dat is alle gebruikersdata
