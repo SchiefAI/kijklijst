@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'kijklijst-v3';
+const CACHE_VERSION = 'kijklijst-v5';
 const STATIC_ASSETS = [
     './',
     './index.html',

@@ -9,9 +9,10 @@ import json
 import os
 import sys
 
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, 'js', 'data.js')
+STATE_FILE = os.path.join(BASE_DIR, 'state.json')
 
 
 def format_data_js(data, imdb):
@@ -59,6 +60,19 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=BASE_DIR, **kwargs)
 
+    def do_GET(self):
+        if self.path == '/api/state':
+            data = {}
+            if os.path.exists(STATE_FILE):
+                with open(STATE_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(data, ensure_ascii=False).encode())
+        else:
+            super().do_GET()
+
     def do_POST(self):
         if self.path == '/api/save':
             try:
@@ -83,6 +97,24 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'ok': False, 'error': str(e)}).encode())
+        elif self.path == '/api/state':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+
+                with open(STATE_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(body, f, ensure_ascii=False)
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': True}).encode())
+
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': False, 'error': str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -97,6 +129,7 @@ if __name__ == '__main__':
     server = http.server.HTTPServer(('', PORT), KijklijstHandler)
     print(f'🎬 Kijklijst server draait op http://localhost:{PORT}')
     print(f'   Data sync: js/data.js')
+    print(f'   State sync: state.json')
     print(f'   Stop met Ctrl+C')
     print()
     try:
