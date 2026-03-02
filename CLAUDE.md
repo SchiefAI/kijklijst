@@ -8,8 +8,8 @@
 
 ```bash
 cp js/data.example.js js/data.js   # eenmalig
-python3 server.py 8000             # of ./start.sh
-# open http://localhost:8000
+python3 server.py                  # of ./start.sh
+# open http://localhost:8420
 ```
 
 ## Bestandsstructuur
@@ -26,7 +26,7 @@ sw.js               → Service Worker (cache-first static, network-first poster
 manifest.json       → PWA manifest (standalone, dark theme)
 icons/              → PWA iconen (192px, 512px)
 start.sh            → Startscript (port 8420, via server.py)
-start.command       → macOS dubbelklik-startscript (port 8000, via server.py)
+start.command       → macOS dubbelklik-startscript (port 8420, via server.py)
 ```
 
 ## Architectuur
@@ -135,18 +135,15 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ### Nieuwe feature toevoegen
 1. HTML in `index.html` (overlay/modal als nodig)
 2. CSS in `css/style.css` (volg glassmorphism pattern)
-3. JS in `js/app.js` (state in localStorage, render in `render()`)
+3. JS in `js/app.js` (state via `syncState()`, render in `render()`)
 4. Bump `CACHE_VERSION` in `sw.js`
 
 ### Nieuw genre toevoegen
 Voeg emoji toe aan `GENRE_ICONS` in app.js. Zonder mapping werkt het alsnog (fallback 🎬).
 
 ### Responsive aanpassingen
-Grid: 5 kolommen desktop, 3 kolommen tablet (≤600px), 2 kolommen kleine telefoons (≤380px). Posters in staand formaat (aspect-ratio 2/3).
+Grid: 5 kolommen desktop, 2 kolommen mobiel (≤600px). Posters in staand formaat (aspect-ratio 2/3).
 Breakpoints: `@media (max-width: 600px)` en `@media (max-width: 380px)` onderaan style.css.
-
-### Film reels (hero decoratie)
-SVG film reels in index.html als `.film-reel--left` en `.film-reel--right`. Subtiele gouden tint, 50s rotatie. Hidden op mobiel (<600px).
 
 ## Niet doen
 

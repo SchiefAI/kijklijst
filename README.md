@@ -1,6 +1,6 @@
 # Mijn Kijklijst
 
-Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Geen account nodig, zero dependencies. Titels worden automatisch gesynchroniseerd naar `data.js` via een lokale Python server; persoonlijke voorkeuren (gezien-status, ratings, volgorde) worden opgeslagen in je browser.
+Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Geen account nodig, zero dependencies. Titels worden gesynchroniseerd naar `data.js` via een lokale Python server; persoonlijke voorkeuren (gezien-status, ratings, volgorde) worden via de server opgeslagen in `state.json` zodat alle apparaten dezelfde state delen.
 
 ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20CSS%20%2B%20Vanilla%20JS-blue)
 ![PWA](https://img.shields.io/badge/PWA-installeerbaar-green)
@@ -56,7 +56,7 @@ Dit start een server op **port 8420** en opent automatisch je browser.
 
 ### Optie 2: macOS dubbelklik
 
-Dubbelklik op `start.command` in Finder. Dit start de server op **port 8000** en opent Chrome.
+Dubbelklik op `start.command` in Finder. Dit start de server op **port 8420** en opent Chrome.
 
 ### Optie 3: Handmatig
 
@@ -67,7 +67,7 @@ python3 server.py 8000
 
 Open daarna `http://localhost:8000` in je browser.
 
-> **Tip:** Je kunt ook gewoon `index.html` openen als bestand, maar dan werken de service worker, TMDB-zoekfunctie en auto-sync niet. Titels worden dan wél getoond maar wijzigingen niet opgeslagen.
+> **Tip:** Je kunt ook gewoon `index.html` openen als bestand, maar dan werken de service worker, TMDB-zoekfunctie, auto-sync en state-synchronisatie niet. Titels worden dan wél getoond, maar wijzigingen worden alleen in localStorage opgeslagen.
 
 ---
 
@@ -225,7 +225,7 @@ De TMDB (The Movie Database) API is gratis voor persoonlijk gebruik. Zo stel je 
 3. Klik onderaan op **"⚙ TMDB API key instellen"**
 4. Plak je API key en klik "Opslaan"
 
-De key wordt opgeslagen in je browser en hoef je maar één keer in te voeren.
+De key wordt opgeslagen op de server (in `state.json`) en hoef je maar één keer in te voeren.
 
 > **Let op:** TMDB vereist dat je hun logo toont bij gebruik van hun data. Meer info op [themoviedb.org/about/logos-attribution](https://www.themoviedb.org/about/logos-attribution).
 
@@ -233,46 +233,31 @@ De key wordt opgeslagen in je browser en hoef je maar één keer in te voeren.
 
 ## Dataopslag
 
-De app slaat data op twee plekken op:
+De app slaat data op drie plekken op:
 
 **`js/data.js` — je titels (single source of truth)**
 
 Alle films en series staan in het `DATA` array in `data.js`. Wanneer je een titel toevoegt of verwijdert via de app, wordt dit bestand automatisch bijgewerkt door `server.py`. Dit betekent dat je titels bewaard blijven, zelfs als je browserdata wist.
 
-**`localStorage` — persoonlijke voorkeuren**
+**`state.json` — persoonlijke voorkeuren (gedeeld tussen apparaten)**
+
+Gezien-status, ratings, sorteervolgorde en TMDB key worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
+
+**`localStorage` — fallback en device-specifieke voorkeuren**
 
 | Sleutel | Wat het opslaat |
 |---------|----------------|
-| `kijklijst_watched` | Gezien-status per titel |
-| `kijklijst_ratings` | Sterren (0-5) en reviews per titel |
-| `kijklijst_order` | Handmatige sorteervolgorde |
-| `kijklijst_view` | Weergavevoorkeur (grid/list) |
-| `kijklijst_tmdb_key` | Je TMDB API key |
+| `kijklijst_view` | Weergavevoorkeur grid/list (bewust device-specifiek) |
+| `kijklijst_watched` | Fallback gezien-status (als server niet bereikbaar) |
+| `kijklijst_ratings` | Fallback ratings (als server niet bereikbaar) |
+| `kijklijst_order` | Fallback sorteervolgorde (als server niet bereikbaar) |
+| `kijklijst_tmdb_key` | Fallback TMDB key (als server niet bereikbaar) |
+
+Bij opstart haalt de app state op van de server. Als de server leeg is (eerste keer), wordt de huidige localStorage geseeded naar de server.
 
 ### Backup maken
 
-Je titels staan veilig in `data.js` — dat bestand kun je gewoon kopiëren. Voor je persoonlijke voorkeuren (ratings, gezien-status) kun je de localStorage exporteren via de browser-console:
-
-```javascript
-// In de browser-console (F12 → Console):
-copy(JSON.stringify({
-  watched: localStorage.getItem('kijklijst_watched'),
-  ratings: localStorage.getItem('kijklijst_ratings'),
-  order: localStorage.getItem('kijklijst_order')
-}));
-// De data staat nu op je klembord — plak het in een tekstbestand
-```
-
-### Backup terugzetten
-
-```javascript
-// Plak je backup-data in een variabele:
-const backup = { /* plak hier je backup */ };
-localStorage.setItem('kijklijst_watched', backup.watched);
-localStorage.setItem('kijklijst_ratings', backup.ratings);
-localStorage.setItem('kijklijst_order', backup.order);
-location.reload();
-```
+Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide bestanden voor een volledige backup.
 
 ---
 
@@ -291,11 +276,12 @@ location.reload();
 │   └── icon-512.png      # PWA-icoon (512×512)
 ├── favicon.ico           # Browser-tabblad icoon
 ├── manifest.json         # PWA-configuratie
-├── server.py             # Lokale Python server met auto-sync
+├── server.py             # Lokale Python server (titels + state sync)
+├── state.json            # Persoonlijke state: watched, ratings, order, tmdb_key (NIET in git)
 ├── sw.js                 # Service Worker (offline caching)
 ├── start.sh              # Start-script (port 8420)
-├── start.command          # macOS start-script (port 8000)
-├── .gitignore            # Houdt data.js en .DS_Store uit git
+├── start.command          # macOS start-script (port 8420)
+├── .gitignore            # Houdt data.js, state.json en .DS_Store uit git
 ├── CLAUDE.md             # Development guide (voor AI-assistenten)
 └── README.md             # Dit bestand
 ```
@@ -313,7 +299,7 @@ location.reload();
 | Logica | Vanilla JavaScript (geen frameworks of libraries) |
 | Fonts | Google Fonts (Inter, Monoton) |
 | API | TMDB API v3 (optioneel, voor auto-complete) |
-| Server | Python 3 custom server (`server.py`) met auto-sync naar `data.js` |
+| Server | Python 3 custom server (`server.py`) met sync naar `data.js` en `state.json` |
 
 **Nul dependencies.** Geen npm, geen build-stap, geen node_modules.
 
@@ -334,7 +320,7 @@ Na de eerste keer laden werkt de app volledig offline (behalve TMDB-zoeken en ni
 | Breedte | Aanpassing |
 |---------|-----------|
 | > 600px | Desktop: 5-koloms grid, zijdelingse controls |
-| ≤ 600px | Mobiel: 3-koloms grid, gestapelde controls, grotere touch-targets (44-48px) |
+| ≤ 600px | Mobiel: 2-koloms grid, inklapbare filters, standaard list view, grotere touch-targets (44-48px) |
 | ≤ 380px | Kleine telefoons: 2-koloms grid |
 
 ### Data-formaat
@@ -361,7 +347,7 @@ Elk item in de database:
 Ja. Alle features werken behalve de auto-complete bij het toevoegen. Je vult dan handmatig de titel en type in.
 
 **Waar staat mijn data?**
-Je titels staan in `js/data.js` — dit wordt automatisch bijgewerkt door de server. Persoonlijke voorkeuren (gezien-status, ratings, volgorde) staan in de `localStorage` van je browser. Als je je browserdata wist verlies je die voorkeuren, maar je titels blijven in `data.js` staan.
+Je titels staan in `js/data.js` en je voorkeuren (gezien-status, ratings, volgorde) in `state.json` — beide worden automatisch bijgewerkt door de server. localStorage dient als fallback wanneer de server niet bereikbaar is. Je kunt je browserdata wissen zonder dataverlies, zolang de server draait.
 
 **Kan ik de app op mijn telefoon gebruiken?**
 Ja. Start de server op je computer en open `http://<je-lokale-ip>:8420` op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je lokale IP vind je via `ipconfig getifaddr en0` (macOS) of `hostname -I` (Linux) — het is iets als `192.168.x.x`, niet je publieke IP. Je kunt de app ook installeren als PWA via je mobiele browser.
@@ -370,7 +356,7 @@ Ja. Start de server op je computer en open `http://<je-lokale-ip>:8420` op je te
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. Voeg optioneel de IMDb-ID toe aan het `IMDB`-object voor directe links.
 
 **De service worker cachet een oude versie. Hoe forceer ik een update?**
-Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v3` naar `kijklijst-v4`). Bij de volgende paginalading wordt de oude cache verwijderd.
+Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v5` naar `kijklijst-v6`). Bij de volgende paginalading wordt de oude cache verwijderd.
 
 **Kan ik de app delen met anderen?**
 Ja, clone de repository en volg de instructies bij [Starten](#starten). De ander kopieert `data.example.js` naar `data.js` en begint met een lege lijst. Alle titels die ze toevoegen via de app worden automatisch opgeslagen in hun eigen `data.js`.
