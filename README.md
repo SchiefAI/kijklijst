@@ -1,6 +1,6 @@
 # Mijn Kijklijst
 
-Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Volledig offline bruikbaar, geen account nodig, alle data wordt lokaal opgeslagen in je browser.
+Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Geen account nodig, zero dependencies. Titels worden automatisch gesynchroniseerd naar `data.js` via een lokale Python server; persoonlijke voorkeuren (gezien-status, ratings, volgorde) worden opgeslagen in je browser.
 
 ![Tech](https://img.shields.io/badge/stack-HTML%20%2B%20CSS%20%2B%20Vanilla%20JS-blue)
 ![PWA](https://img.shields.io/badge/PWA-installeerbaar-green)
@@ -62,12 +62,12 @@ Dubbelklik op `start.command` in Finder. Dit start de server op **port 8000** en
 
 ```bash
 cd /pad/naar/films
-python3 -m http.server 8000
+python3 server.py 8000
 ```
 
 Open daarna `http://localhost:8000` in je browser.
 
-> **Tip:** Je kunt ook gewoon `index.html` openen als bestand, maar de service worker en TMDB-zoekfunctie werken dan niet.
+> **Tip:** Je kunt ook gewoon `index.html` openen als bestand, maar dan werken de service worker, TMDB-zoekfunctie en auto-sync niet. Titels worden dan wél getoond maar wijzigingen niet opgeslagen.
 
 ---
 
@@ -233,11 +233,16 @@ De key wordt opgeslagen in je browser en hoef je maar één keer in te voeren.
 
 ## Dataopslag
 
-Alle data wordt lokaal opgeslagen in je browser via `localStorage`. Er wordt niets naar een server gestuurd.
+De app slaat data op twee plekken op:
+
+**`js/data.js` — je titels (single source of truth)**
+
+Alle films en series staan in het `DATA` array in `data.js`. Wanneer je een titel toevoegt of verwijdert via de app, wordt dit bestand automatisch bijgewerkt door `server.py`. Dit betekent dat je titels bewaard blijven, zelfs als je browserdata wist.
+
+**`localStorage` — persoonlijke voorkeuren**
 
 | Sleutel | Wat het opslaat |
 |---------|----------------|
-| `kijklijst_custom` | Zelf toegevoegde titels (JSON array) |
 | `kijklijst_watched` | Gezien-status per titel |
 | `kijklijst_ratings` | Sterren (0-5) en reviews per titel |
 | `kijklijst_order` | Handmatige sorteervolgorde |
@@ -246,12 +251,11 @@ Alle data wordt lokaal opgeslagen in je browser via `localStorage`. Er wordt nie
 
 ### Backup maken
 
-Je kunt een backup maken door de localStorage-data te exporteren via de browser-console:
+Je titels staan veilig in `data.js` — dat bestand kun je gewoon kopiëren. Voor je persoonlijke voorkeuren (ratings, gezien-status) kun je de localStorage exporteren via de browser-console:
 
 ```javascript
 // In de browser-console (F12 → Console):
 copy(JSON.stringify({
-  custom: localStorage.getItem('kijklijst_custom'),
   watched: localStorage.getItem('kijklijst_watched'),
   ratings: localStorage.getItem('kijklijst_ratings'),
   order: localStorage.getItem('kijklijst_order')
@@ -264,7 +268,6 @@ copy(JSON.stringify({
 ```javascript
 // Plak je backup-data in een variabele:
 const backup = { /* plak hier je backup */ };
-localStorage.setItem('kijklijst_custom', backup.custom);
 localStorage.setItem('kijklijst_watched', backup.watched);
 localStorage.setItem('kijklijst_ratings', backup.ratings);
 localStorage.setItem('kijklijst_order', backup.order);
@@ -288,6 +291,7 @@ location.reload();
 │   └── icon-512.png      # PWA-icoon (512×512)
 ├── favicon.ico           # Browser-tabblad icoon
 ├── manifest.json         # PWA-configuratie
+├── server.py             # Lokale Python server met auto-sync
 ├── sw.js                 # Service Worker (offline caching)
 ├── start.sh              # Start-script (port 8420)
 ├── start.command          # macOS start-script (port 8000)
@@ -309,7 +313,7 @@ location.reload();
 | Logica | Vanilla JavaScript (geen frameworks of libraries) |
 | Fonts | Google Fonts (Inter, Monoton) |
 | API | TMDB API v3 (optioneel, voor auto-complete) |
-| Server | Python 3 `http.server` (alleen voor lokaal draaien) |
+| Server | Python 3 custom server (`server.py`) met auto-sync naar `data.js` |
 
 **Nul dependencies.** Geen npm, geen build-stap, geen node_modules.
 
@@ -320,6 +324,7 @@ location.reload();
 | Statische bestanden (HTML, CSS, JS) | Cache-first, fallback naar netwerk |
 | Google Fonts | Cache-first (veranderen zelden) |
 | Poster-afbeeldingen (Amazon/TMDB) | Network-first, fallback naar cache |
+| `/api/*` endpoints | Altijd netwerk (nooit gecached) |
 | TMDB API-calls | Altijd netwerk (nooit gecached) |
 
 Na de eerste keer laden werkt de app volledig offline (behalve TMDB-zoeken en nieuwe poster-afbeeldingen).
@@ -356,7 +361,7 @@ Elk item in de database:
 Ja. Alle features werken behalve de auto-complete bij het toevoegen. Je vult dan handmatig de titel en type in.
 
 **Waar staat mijn data?**
-Alles staat in de `localStorage` van je browser. Als je je browserdata wist, ben je je gegevens kwijt. Maak regelmatig een backup (zie [Dataopslag](#dataopslag)).
+Je titels staan in `js/data.js` — dit wordt automatisch bijgewerkt door de server. Persoonlijke voorkeuren (gezien-status, ratings, volgorde) staan in de `localStorage` van je browser. Als je je browserdata wist verlies je die voorkeuren, maar je titels blijven in `data.js` staan.
 
 **Kan ik de app op mijn telefoon gebruiken?**
 Ja. Start de server op je computer, en open `http://<je-ip-adres>:8420` op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je kunt de app ook installeren als PWA via je mobiele browser.
@@ -365,7 +370,7 @@ Ja. Start de server op je computer, en open `http://<je-ip-adres>:8420` op je te
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. Voeg optioneel de IMDb-ID toe aan het `IMDB`-object voor directe links.
 
 **De service worker cachet een oude versie. Hoe forceer ik een update?**
-Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v2` naar `kijklijst-v3`). Bij de volgende paginalading wordt de oude cache verwijderd.
+Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v3` naar `kijklijst-v4`). Bij de volgende paginalading wordt de oude cache verwijderd.
 
 **Kan ik de app delen met anderen?**
-Ja, kopieer de hele `films/`-map. De ander hoeft alleen Python 3 te hebben en `./start.sh` te draaien. Zelf toegevoegde titels zitten in localStorage en worden niet meegekopieerd — de standaard-database in `data.js` wel.
+Ja, clone de repository en volg de instructies bij [Starten](#starten). De ander kopieert `data.example.js` naar `data.js` en begint met een lege lijst. Alle titels die ze toevoegen via de app worden automatisch opgeslagen in hun eigen `data.js`.

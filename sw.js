@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'kijklijst-v2';
+const CACHE_VERSION = 'kijklijst-v3';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -47,6 +47,12 @@ self.addEventListener('fetch', event => {
                 });
             })
         );
+        return;
+    }
+
+    // API calls (save endpoint): always network, no cache
+    if (url.pathname.startsWith('/api/')) {
+        event.respondWith(fetch(event.request));
         return;
     }
 
