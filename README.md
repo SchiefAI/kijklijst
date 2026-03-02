@@ -118,7 +118,7 @@ Na installatie opent de app fullscreen zonder adresbalk.
 | **Status** | Alles / Niet gezien / Gezien |
 | **Genre** | Dropdown met alle genres + aantallen |
 | **Taal** | Dropdown met alle talen + aantallen |
-| **Zoeken** | Vrij tekstveld — filtert direct op titel (250ms vertraging) |
+| **Zoeken** | Vrij tekstveld — filtert direct op titel (250ms vertraging). Bij geen resultaten verschijnt een link om de zoekterm direct toe te voegen |
 
 **Shortcut:** klik op de statistiek-pills in de header ("65 films", "19 series", "5 gezien") om direct te filteren op die categorie.
 
@@ -139,7 +139,7 @@ De genre- en taaldropdowns tonen dynamisch hoeveel resultaten er per optie zijn,
 
 Schakel tussen twee weergaven met de knoppen rechts in de controls-balk:
 
-- **▦ Grid** — kaarten in een responsive raster met poster, beschrijving, genres en links
+- **▦ Grid** — kaarten in een 5-koloms raster met staande posters (2:3), beschrijving, genres en links
 - **☰ Lijst** — compacte rijen met kleine poster, titel en acties op één lijn
 
 De voorkeur wordt onthouden tussen sessies.
@@ -333,9 +333,9 @@ Na de eerste keer laden werkt de app volledig offline (behalve TMDB-zoeken en ni
 
 | Breedte | Aanpassing |
 |---------|-----------|
-| > 600px | Desktop: auto-fill grid, zijdelingse controls |
-| ≤ 600px | Mobiel: 2-koloms grid, gestapelde controls, grotere touch-targets (44-48px) |
-| ≤ 380px | Kleine telefoons: 1-koloms grid |
+| > 600px | Desktop: 5-koloms grid, zijdelingse controls |
+| ≤ 600px | Mobiel: 3-koloms grid, gestapelde controls, grotere touch-targets (44-48px) |
+| ≤ 380px | Kleine telefoons: 2-koloms grid |
 
 ### Data-formaat
 

@@ -270,6 +270,9 @@ body {
     transition: all .25s;
     font-family: inherit;
 }
+.btn-group button:first-child { border-radius: 14px 0 0 14px; }
+.btn-group button:last-child  { border-radius: 0 14px 14px 0; }
+.btn-group button:only-child  { border-radius: 14px; }
 .btn-group button:not(:last-child) { border-right: 1px solid rgba(255,255,255,.06); }
 .btn-group button.active {
     background: rgba(229,160,13,.14);
@@ -307,7 +310,7 @@ select.sort-select:focus {
 }
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
     padding: .5rem 1.25rem 3rem;
     max-width: 1400px;
@@ -368,7 +371,7 @@ select.sort-select:focus {
 .poster-wrap {
     position: relative;
     width: 100%;
-    aspect-ratio: 16/9;
+    aspect-ratio: 2/3;
     overflow: hidden;
 }
 /* Gradient overlay that slides up on hover */
@@ -680,6 +683,21 @@ select.sort-select:focus {
     padding: 3rem;
     color: var(--text-dim);
 }
+.empty-add-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    margin-top: .5rem;
+    opacity: .85;
+    transition: opacity .2s;
+}
+.empty-add-btn:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
 /* ── ADD BUTTON (in stats row) ── */
 .pill--add {
     cursor: pointer;
@@ -869,7 +887,7 @@ select.sort-select:focus {
 
     /* Grid */
     .grid {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: .55rem;
         padding: .5rem .65rem 5rem;
     }
@@ -1402,6 +1420,6 @@ select.sort-select:focus {
 /* Extra small phones */
 @media (max-width: 380px) {
     .header h1 { font-size: 1.4rem; }
-    .grid { grid-template-columns: 1fr; gap: .5rem; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: .5rem; }
     .card-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 }
