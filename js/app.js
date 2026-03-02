@@ -13,33 +13,69 @@ async function syncToFile() {
     }
 }
 
-// ── WATCHED STATE ──
+// ── STATE (server-synced) ──
 let watched = {};
 try { watched = JSON.parse(localStorage.getItem('kijklijst_watched') || '{}'); } catch(e) {}
 
-function saveWatched() {
-    try { localStorage.setItem('kijklijst_watched', JSON.stringify(watched)); } catch(e) {}
-}
-
-// ── RATINGS STATE ──
 let ratings = {};
 try { ratings = JSON.parse(localStorage.getItem('kijklijst_ratings') || '{}'); } catch(e) {}
 
-function saveRatings() {
-    try { localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings)); } catch(e) {}
-}
-
-// ── CUSTOM ORDER STATE ──
 let customOrder = [];
 try { customOrder = JSON.parse(localStorage.getItem('kijklijst_order') || '[]'); } catch(e) {}
 
-function saveCustomOrder() {
-    try { localStorage.setItem('kijklijst_order', JSON.stringify(customOrder)); } catch(e) {}
-}
-
-// ── TMDB API KEY ──
 let tmdbKey = '';
 try { tmdbKey = localStorage.getItem('kijklijst_tmdb_key') || ''; } catch(e) {}
+
+function saveWatched() {
+    try { localStorage.setItem('kijklijst_watched', JSON.stringify(watched)); } catch(e) {}
+    syncState();
+}
+
+function saveRatings() {
+    try { localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings)); } catch(e) {}
+    syncState();
+}
+
+function saveCustomOrder() {
+    try { localStorage.setItem('kijklijst_order', JSON.stringify(customOrder)); } catch(e) {}
+    syncState();
+}
+
+async function syncState() {
+    try {
+        await fetch('/api/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                watched, ratings, order: customOrder, tmdb_key: tmdbKey
+            })
+        });
+    } catch(e) { /* server niet beschikbaar — stille fallback */ }
+}
+
+async function loadState() {
+    try {
+        const resp = await fetch('/api/state');
+        if (!resp.ok) return;
+        const s = await resp.json();
+        const hasServerState = s.watched || s.ratings || s.order || s.tmdb_key;
+        if (hasServerState) {
+            // Server is source of truth
+            if (s.watched) watched = s.watched;
+            if (s.ratings) ratings = s.ratings;
+            if (s.order) customOrder = s.order;
+            if (s.tmdb_key) tmdbKey = s.tmdb_key;
+            localStorage.setItem('kijklijst_watched', JSON.stringify(watched));
+            localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings));
+            localStorage.setItem('kijklijst_order', JSON.stringify(customOrder));
+            if (tmdbKey) localStorage.setItem('kijklijst_tmdb_key', tmdbKey);
+        } else {
+            // Server is leeg — seed met huidige localStorage data
+            await syncState();
+        }
+    } catch(e) { /* server niet beschikbaar, localStorage fallback werkt al */ }
+    render();
+}
 
 // ── HELPERS ──
 function hashColor(str) {
@@ -142,8 +178,9 @@ function ratingBlockHtml(key, isWatched) {
 }
 
 // ── VIEW MODE ──
-let viewMode = 'grid';
-try { viewMode = localStorage.getItem('kijklijst_view') || 'grid'; } catch(e) {}
+const defaultView = window.innerWidth <= 600 ? 'list' : 'grid';
+let viewMode = defaultView;
+try { viewMode = localStorage.getItem('kijklijst_view') || defaultView; } catch(e) {}
 
 function saveViewMode() {
     try { localStorage.setItem('kijklijst_view', viewMode); } catch(e) {}
@@ -333,8 +370,12 @@ function render() {
                 </div>
                 <div class="card-body">
                     <div class="list-info">
-                        <div class="card-title">${item.t}</div>
+                        <div class="list-title-row">
+                            <div class="card-title">${item.t}</div>
+                            ${genreBadges(item.g)}
+                        </div>
                         <div class="card-subtitle">${subtitle(item)}</div>
+                        ${item.d ? `<div class="list-desc">${item.d}</div>` : ''}
                         ${ratingHtml}
                     </div>
                     <div class="list-actions">
@@ -488,6 +529,14 @@ viewToggle.addEventListener('click', e => {
 genreFilter.addEventListener('change', render);
 langFilter.addEventListener('change', render);
 sortSelect.addEventListener('change', render);
+
+// Mobile filter toggle
+const filterToggle = document.getElementById('filterToggle');
+const controlsFilters = document.getElementById('controlsFilters');
+filterToggle.addEventListener('click', () => {
+    controlsFilters.classList.toggle('open');
+    filterToggle.classList.toggle('active');
+});
 
 // Stat pills as filter shortcuts
 document.getElementById('statFilm').addEventListener('click', () => {
@@ -942,6 +991,7 @@ tmdbOverlay.addEventListener('click', e => {
 tmdbKeySave.addEventListener('click', () => {
     tmdbKey = tmdbKeyInput.value.trim();
     try { localStorage.setItem('kijklijst_tmdb_key', tmdbKey); } catch(e) {}
+    syncState();
     tmdbOverlay.classList.remove('visible');
 });
 tmdbKeyInput.addEventListener('keydown', e => {
@@ -1056,3 +1106,4 @@ if (viewMode !== 'grid') {
     if (savedBtn) savedBtn.classList.add('active');
 }
 render();
+loadState();

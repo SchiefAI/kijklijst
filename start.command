@@ -2,7 +2,7 @@
 # Mijn Kijklijst — Open als Chrome App
 cd "$(dirname "$0")"
 
-PORT=8000
+PORT=8420
 # Check of de poort al bezet is
 if lsof -i :$PORT &>/dev/null; then
     echo "Server draait al op poort $PORT"
