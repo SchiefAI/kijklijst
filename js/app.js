@@ -1,25 +1,16 @@
-// ── HIDDEN TITLES (verwijderde standaard-items) ──
-let hiddenKeys = [];
-try { hiddenKeys = JSON.parse(localStorage.getItem('kijklijst_hidden') || '[]'); } catch(e) {}
-
-function saveHidden() {
-    try { localStorage.setItem('kijklijst_hidden', JSON.stringify(hiddenKeys)); } catch(e) {}
-}
-
-// Filter verborgen items uit DATA
-for (let i = DATA.length - 1; i >= 0; i--) {
-    if (hiddenKeys.includes(DATA[i].t.toLowerCase().replace(/[^a-z0-9]/g,''))) {
-        DATA.splice(i, 1);
+// ── SYNC DATA NAAR data.js VIA LOKALE SERVER ──
+async function syncToFile() {
+    try {
+        const resp = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: DATA, imdb: IMDB })
+        });
+        if (!resp.ok) throw new Error('Server response ' + resp.status);
+    } catch(e) {
+        // Server niet bereikbaar (file:// of offline) — stille fallback
+        console.info('Sync niet beschikbaar:', e.message);
     }
-}
-
-// ── CUSTOM TITLES (localStorage) ──
-let customTitles = [];
-try { customTitles = JSON.parse(localStorage.getItem('kijklijst_custom') || '[]'); } catch(e) {}
-customTitles.forEach(item => DATA.push(item));
-
-function saveCustomTitles() {
-    try { localStorage.setItem('kijklijst_custom', JSON.stringify(customTitles)); } catch(e) {}
 }
 
 // ── WATCHED STATE ──
@@ -376,17 +367,8 @@ function removeItem(key, title) {
     if (!confirm(`"${title}" verwijderen van je kijklijst?`)) return;
     const idx = DATA.findIndex(i => getKey(i) === key);
     if (idx > -1) DATA.splice(idx, 1);
-    const cIdx = customTitles.findIndex(i => getKey(i) === key);
-    if (cIdx > -1) {
-        customTitles.splice(cIdx, 1);
-        saveCustomTitles();
-    } else {
-        // Standaard-item: onthoud als verborgen
-        if (!hiddenKeys.includes(key)) {
-            hiddenKeys.push(key);
-            saveHidden();
-        }
-    }
+    // Verwijder ook uit IMDB mapping
+    if (IMDB[title]) delete IMDB[title];
     delete watched[key];
     saveWatched();
     delete ratings[key];
@@ -394,6 +376,7 @@ function removeItem(key, title) {
     const oIdx = customOrder.indexOf(key);
     if (oIdx > -1) customOrder.splice(oIdx, 1);
     saveCustomOrder();
+    syncToFile();
     render();
 }
 
@@ -589,16 +572,8 @@ addSubmit.addEventListener('click', () => {
         img: document.getElementById('addImg').value.trim(),
         g: document.getElementById('addGenre').value.trim()
     };
-    // Unhide als deze titel eerder verwijderd was
-    const newKey = newItem.t.toLowerCase().replace(/[^a-z0-9]/g,'');
-    const hIdx = hiddenKeys.indexOf(newKey);
-    if (hIdx > -1) {
-        hiddenKeys.splice(hIdx, 1);
-        saveHidden();
-    }
     DATA.push(newItem);
-    customTitles.push(newItem);
-    saveCustomTitles();
+    syncToFile();
     closeAdd();
     render();
 });

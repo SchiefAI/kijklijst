@@ -8,7 +8,7 @@ if lsof -i :$PORT &>/dev/null; then
     echo "Server draait al op poort $PORT"
 else
     echo "Server starten op poort $PORT..."
-    python3 -m http.server $PORT &
+    python3 server.py $PORT &
     sleep 1
 fi
 
