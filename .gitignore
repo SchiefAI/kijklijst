@@ -1,0 +1,12 @@
+# Persoonlijke data (gebruik data.example.js als template)
+js/data.js
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

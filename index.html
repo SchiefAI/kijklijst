@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mijn Kijklijst</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#070a12">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Monoton&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="header">
+    <div class="hero-posters" id="heroPosters"></div>
+    <div class="hero-vignette"></div>
+    <div class="hero-aurora"></div>
+    <div class="hero-spotlight"></div>
+    <span class="bokeh"></span>
+    <span class="bokeh"></span>
+    <span class="bokeh"></span>
+    <span class="bokeh"></span>
+    <span class="bokeh"></span>
+    <div class="hero-content">
+        <h1>Mijn Kijklijst</h1>
+        <div class="stats">
+            <button class="pill pill--film" id="statFilm"><strong id="filmCount">0</strong> films</button>
+            <button class="pill pill--serie" id="statSerie"><strong id="serieCount">0</strong> series</button>
+            <button class="pill pill--watched" id="statWatched"><strong id="watchedCount">0</strong> gezien</button>
+            <button class="pill pill--add" id="fabBtn" title="Titel toevoegen">+</button>
+        </div>
+    </div>
+    <div class="hero-separator"></div>
+</div>
+
+<div class="controls">
+    <div class="btn-group" id="typeFilter">
+        <button class="active" data-type="all">Alles</button>
+        <button data-type="film">Films</button>
+        <button data-type="serie">Series</button>
+    </div>
+    <div class="btn-group" id="statusFilter">
+        <button class="active" data-status="all">Alles</button>
+        <button data-status="unwatched">Niet gezien</button>
+        <button data-status="watched">Gezien</button>
+    </div>
+    <select class="sort-select" id="genreFilter">
+        <option value="all">Alle genres</option>
+    </select>
+    <select class="sort-select" id="langFilter">
+        <option value="all">Alle talen</option>
+    </select>
+    <select class="sort-select" id="sortSelect">
+        <option value="az">Titel A-Z</option>
+        <option value="za">Titel Z-A</option>
+        <option value="year-desc">Jaar (nieuw → oud)</option>
+        <option value="year-asc">Jaar (oud → nieuw)</option>
+        <option value="custom">Mijn volgorde</option>
+        <option value="rating-desc">Rating (hoog → laag)</option>
+    </select>
+    <input type="text" class="search-box" id="searchBox" placeholder="Zoeken...">
+    <button class="picker-btn" id="pickerBtn" title="Wat zal ik kijken?">🎲 Random</button>
+    <div class="btn-group view-toggle" id="viewToggle">
+        <button class="active" data-view="grid" title="Grid weergave">▦</button>
+        <button data-view="list" title="Lijst weergave">☰</button>
+    </div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<!-- Add-title overlay -->
+<div class="overlay" id="addOverlay">
+    <div class="modal">
+        <div class="modal-title">Titel toevoegen</div>
+        <div class="tmdb-wrap">
+            <input class="modal-field" id="addTitle" type="text" placeholder="Zoek een titel..." autocomplete="off">
+            <div class="tmdb-results" id="tmdbResults"></div>
+        </div>
+        <div class="add-extra-fields" id="addExtraFields">
+            <div class="add-extra-row">
+                <input class="modal-field small" id="addYear" type="text" placeholder="Jaar" maxlength="4">
+                <input class="modal-field small" id="addLang" type="text" placeholder="Taal">
+            </div>
+            <input class="modal-field small" id="addGenre" type="text" placeholder="Genres (bijv. Drama, Komedie)">
+            <textarea class="modal-field small" id="addDesc" rows="2" placeholder="Korte beschrijving..."></textarea>
+            <input class="modal-field small" id="addImg" type="text" placeholder="Poster URL (optioneel)">
+        </div>
+        <div class="type-toggle">
+            <input type="radio" name="addType" value="film" id="addFilm" checked>
+            <label for="addFilm">Film</label>
+            <input type="radio" name="addType" value="serie" id="addSerie">
+            <label for="addSerie">Serie</label>
+        </div>
+        <button class="modal-submit" id="addSubmit">Toevoegen</button>
+        <button class="tmdb-settings-btn" id="tmdbSettingsBtn">⚙ TMDB API key instellen</button>
+    </div>
+</div>
+
+<!-- Random picker overlay -->
+<div class="picker-overlay" id="pickerOverlay">
+    <div class="picker-modal">
+        <div class="picker-slot" id="pickerSlot"></div>
+        <div class="picker-info" id="pickerInfo">
+            <div class="picker-title" id="pickerTitle"></div>
+            <div class="picker-meta" id="pickerMeta"></div>
+            <div class="picker-badges" id="pickerBadges"></div>
+            <div class="picker-desc" id="pickerDesc"></div>
+            <div class="picker-actions">
+                <button class="pick-watch" id="pickWatch">✓ Vanavond kijken!</button>
+                <button class="pick-again" id="pickAgain">🎲 Nog een</button>
+                <button class="pick-close" id="pickClose">Sluiten</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TMDB settings overlay -->
+<div class="overlay" id="tmdbOverlay">
+    <div class="modal">
+        <div class="modal-title">TMDB API Key</div>
+        <p class="modal-hint">Maak een gratis account aan op <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a> om een API key te krijgen.</p>
+        <input class="modal-field" id="tmdbKeyInput" type="text" placeholder="Plak je API key hier..." autocomplete="off">
+        <button class="modal-submit" id="tmdbKeySave">Opslaan</button>
+    </div>
+</div>
+
+
+<!-- TMDB Attribution -->
+<footer class="tmdb-attribution">
+    <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" class="tmdb-logo">
+    <span>Filmgegevens aangeboden door <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a></span>
+</footer>
+
+<!-- Scripts: data first, then app logic -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
