@@ -280,11 +280,21 @@ function render() {
     const isDragMode = sortVal === 'custom';
 
     if (items.length === 0) {
-        let emptyHtml = '<div class="empty-state">Geen resultaten gevonden';
-        if (query) {
+        const hasFilters = typeVal !== 'all' || statusVal !== 'all' || genreVal !== 'all' || langVal !== 'all';
+        let emptyHtml = '<div class="empty-state">';
+        if (hasFilters && query) {
+            emptyHtml += 'Geen resultaten met actieve filters';
+            emptyHtml += '<br><button class="empty-add-btn" onclick="resetFilters()">Filters resetten</button>';
+        } else if (hasFilters) {
+            emptyHtml += 'Geen resultaten met actieve filters';
+            emptyHtml += '<br><button class="empty-add-btn" onclick="resetFilters()">Filters resetten</button>';
+        } else if (query) {
+            emptyHtml += 'Geen resultaten gevonden';
             const safe = query.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             emptyHtml += `<br><button class="empty-add-btn" onclick="openAdd('${safe}')">` +
-                         `"${safe}" toevoegen? +</button>`;
+                         `Niet gevonden? Zoek in TMDB →</button>`;
+        } else {
+            emptyHtml += 'Geen resultaten gevonden';
         }
         emptyHtml += '</div>';
         grid.innerHTML = emptyHtml;
@@ -496,6 +506,18 @@ document.getElementById('statWatched').addEventListener('click', () => {
     if (watchedBtn) { watchedBtn.classList.add('active'); render(); }
 });
 
+function resetFilters() {
+    typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    const allTypeBtn = typeFilter.querySelector('[data-type="all"]');
+    if (allTypeBtn) allTypeBtn.classList.add('active');
+    statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    const allStatusBtn = statusFilter.querySelector('[data-status="all"]');
+    if (allStatusBtn) allStatusBtn.classList.add('active');
+    genreFilter.value = 'all';
+    langFilter.value = 'all';
+    render();
+}
+
 let searchTimeout;
 searchBox.addEventListener('input', () => {
     clearTimeout(searchTimeout);
@@ -543,12 +565,16 @@ function openAdd(prefill = '') {
     tmdbResultsEl.classList.remove('visible');
     if (prefill) {
         addTitleInput.value = prefill;
-        setTimeout(() => {
-            addTitleInput.focus();
-            if (TMDB_KEY && prefill.length >= 2) {
-                addTitleInput.dispatchEvent(new Event('input'));
-            }
-        }, 200);
+        if (tmdbKey && prefill.length >= 2) {
+            tmdbResultsEl.innerHTML = '<div class="tmdb-loading">Zoeken...</div>';
+            tmdbResultsEl.classList.add('visible');
+            setTimeout(() => {
+                addTitleInput.focus();
+                searchTmdb(prefill);
+            }, 200);
+        } else {
+            setTimeout(() => addTitleInput.focus(), 200);
+        }
     } else {
         setTimeout(() => addTitleInput.focus(), 200);
     }

@@ -19,7 +19,7 @@ index.html          → Hoofd-HTML, alle overlays/modals
 css/style.css       → Alle styling (één bestand, ~1425 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1032 regels)
+js/app.js           → Alle applicatielogica (~1058 regels)
 server.py           → Lokale Python server met /api/save endpoint
 sw.js               → Service Worker (cache-first static, network-first posters)
 manifest.json       → PWA manifest (standalone, dark theme)
@@ -80,16 +80,17 @@ border: 1px solid rgba(255,255,255,.08);
 | Star rating HTML helpers | ~97-142 |
 | View mode (grid/list) | ~144-150 |
 | Dynamic dropdown counts | ~187-227 |
-| Render (central, incl. empty-state + toevoeg-link) | ~230-360 |
-| Star rating interaction | ~400-437 |
-| Sparkle effect (5 sterren) | ~439-456 |
-| Stat pills als filter shortcuts | ~483-498 |
-| Hero poster mosaic builder | ~506-531 |
-| Add title modal + TMDB | ~539-1010 |
-| openAdd() (met prefill support) | ~539-553 |
-| Random picker | ~603-720 |
-| Drag-and-drop (desktop + touch) | ~721-885 |
-| TMDB auto-complete | ~888-1032 |
+| Render (central, incl. empty-state + filter hints) | ~230-370 |
+| Star rating interaction | ~410-450 |
+| Sparkle effect (5 sterren) | ~452-470 |
+| Stat pills als filter shortcuts | ~495-510 |
+| resetFilters() | ~509-519 |
+| Hero poster mosaic builder | ~530-555 |
+| Add title modal + TMDB | ~561-1035 |
+| openAdd() (met prefill + directe TMDB search) | ~561-580 |
+| Random picker | ~620-740 |
+| Drag-and-drop (desktop + touch) | ~742-900 |
+| TMDB auto-complete | ~910-1058 |
 
 ## Conventies
 

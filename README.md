@@ -118,7 +118,7 @@ Na installatie opent de app fullscreen zonder adresbalk.
 | **Status** | Alles / Niet gezien / Gezien |
 | **Genre** | Dropdown met alle genres + aantallen |
 | **Taal** | Dropdown met alle talen + aantallen |
-| **Zoeken** | Vrij tekstveld — filtert direct op titel (250ms vertraging). Bij geen resultaten verschijnt een link om de zoekterm direct toe te voegen |
+| **Zoeken** | Vrij tekstveld — filtert direct op titel (250ms vertraging). Bij geen resultaten: "Zoek in TMDB →" link. Bij actieve filters zonder resultaten: "Filters resetten" knop |
 
 **Shortcut:** klik op de statistiek-pills in de header ("65 films", "19 series", "5 gezien") om direct te filteren op die categorie.
 
@@ -364,7 +364,7 @@ Ja. Alle features werken behalve de auto-complete bij het toevoegen. Je vult dan
 Je titels staan in `js/data.js` — dit wordt automatisch bijgewerkt door de server. Persoonlijke voorkeuren (gezien-status, ratings, volgorde) staan in de `localStorage` van je browser. Als je je browserdata wist verlies je die voorkeuren, maar je titels blijven in `data.js` staan.
 
 **Kan ik de app op mijn telefoon gebruiken?**
-Ja. Start de server op je computer, en open `http://<je-ip-adres>:8420` op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je kunt de app ook installeren als PWA via je mobiele browser.
+Ja. Start de server op je computer en open `http://<je-lokale-ip>:8420` op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je lokale IP vind je via `ipconfig getifaddr en0` (macOS) of `hostname -I` (Linux) — het is iets als `192.168.x.x`, niet je publieke IP. Je kunt de app ook installeren als PWA via je mobiele browser.
 
 **Hoe voeg ik meer films toe aan de standaard-database?**
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. Voeg optioneel de IMDb-ID toe aan het `IMDB`-object voor directe links.
