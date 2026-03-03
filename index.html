@@ -118,6 +118,7 @@
         </div>
         <button class="modal-submit" id="addSubmit">Toevoegen</button>
         <button class="tmdb-settings-btn" id="tmdbSettingsBtn">⚙ TMDB API key instellen</button>
+        <button class="tmdb-settings-btn" id="importFromAddBtn">📋 Lijst importeren</button>
     </div>
 </div>
 
@@ -160,6 +161,41 @@
     </div>
 </div>
 
+
+<!-- Bulk import overlay -->
+<div class="overlay" id="importOverlay">
+    <div class="modal import-modal">
+        <!-- Step 1: Input -->
+        <div class="import-step" id="importStepInput">
+            <div class="modal-title">Lijst importeren</div>
+            <p class="modal-hint">Plak je titels hieronder, één per regel. Ze worden opgezocht via TMDB.</p>
+            <textarea class="modal-field import-textarea" id="importTextarea" rows="10" placeholder="The Shawshank Redemption&#10;Breaking Bad&#10;Inception&#10;..."></textarea>
+            <div class="import-count" id="importCount">0 titels</div>
+            <button class="modal-submit" id="importStart">Importeren</button>
+            <button class="tmdb-settings-btn" id="importTmdbBtn">⚙ TMDB API key instellen</button>
+        </div>
+        <!-- Step 2: Progress -->
+        <div class="import-step" id="importStepProgress" style="display:none">
+            <div class="modal-title">Titels opzoeken...</div>
+            <div class="import-progress-bar"><div class="import-progress-fill" id="importProgressFill"></div></div>
+            <div class="import-progress-text" id="importProgressText">0 / 0</div>
+            <div class="import-progress-current" id="importProgressCurrent"></div>
+            <button class="modal-submit import-cancel" id="importCancel">Annuleren</button>
+        </div>
+        <!-- Step 3: Review -->
+        <div class="import-step" id="importStepReview" style="display:none">
+            <div class="modal-title">Resultaten controleren</div>
+            <div class="import-review-actions">
+                <button class="import-select-btn" id="importSelectAll">Alles selecteren</button>
+                <button class="import-select-btn" id="importSelectNone">Niets selecteren</button>
+            </div>
+            <div class="import-review-list" id="importReviewList"></div>
+            <div class="import-summary" id="importSummary"></div>
+            <button class="modal-submit" id="importConfirm">Toevoegen</button>
+            <button class="import-back-btn" id="importBack">← Terug</button>
+        </div>
+    </div>
+</div>
 
 <!-- TMDB Attribution -->
 <footer class="tmdb-attribution">
