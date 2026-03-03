@@ -210,7 +210,11 @@ const sortSelect = document.getElementById('sortSelect');
 const viewToggle = document.getElementById('viewToggle');
 
 // ── DROPDOWNS ──
-(function populateDropdowns() {
+function populateDropdowns() {
+    // Clear existing options (keep "all" option)
+    while (genreFilter.options.length > 1) genreFilter.remove(1);
+    while (langFilter.options.length > 1) langFilter.remove(1);
+
     const genreCounts = {};
     const langCounts = {};
     DATA.forEach(i => {
@@ -231,7 +235,8 @@ const viewToggle = document.getElementById('viewToggle');
         opt.textContent = `${lang} (${langCounts[lang]})`;
         langFilter.appendChild(opt);
     });
-})();
+}
+populateDropdowns();
 
 // ── DYNAMIC DROPDOWN COUNTS ──
 function updateDropdownCounts(query, typeVal, statusVal, genreVal, langVal) {
@@ -368,6 +373,10 @@ function render() {
             const safe = query.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             emptyHtml += `<br><button class="empty-add-btn" onclick="openAdd('${safe}')">` +
                          `Niet gevonden? Zoek in TMDB →</button>`;
+        } else if (DATA.length === 0) {
+            emptyHtml += 'Je kijklijst is nog leeg';
+            emptyHtml += '<br><button class="empty-add-btn" onclick="openAdd()">+ Titel toevoegen</button>';
+            emptyHtml += '<br><button class="empty-add-btn" onclick="openImport()">📋 Lijst importeren</button>';
         } else {
             emptyHtml += 'Geen resultaten gevonden';
         }
@@ -454,6 +463,12 @@ function render() {
     updateFilterBadge();
 }
 
+// Toggle card description expand/collapse
+grid.addEventListener('click', e => {
+    const desc = e.target.closest('.card-desc, .list-desc');
+    if (desc) desc.classList.toggle('expanded');
+});
+
 function toggleWatch(key) {
     const wasWatched = !!watched[key];
     const oldRating = ratings[key] ? { ...ratings[key] } : null;
@@ -484,6 +499,7 @@ function toggleWatch(key) {
 }
 
 function removeItem(key, title) {
+    if (!confirm(`"${title}" verwijderen van je kijklijst?`)) return;
     const idx = DATA.findIndex(i => getKey(i) === key);
     if (idx === -1) return;
     const removedItem = { ...DATA[idx] };
@@ -767,8 +783,21 @@ addSubmit.addEventListener('click', () => {
         g: document.getElementById('addGenre').value.trim()
     };
     DATA.push(newItem);
+
+    // Fetch IMDb ID in background if added via TMDB
+    if (selectedTmdbItem) {
+        fetchImdbId(selectedTmdbItem.id, selectedTmdbItem.media_type).then(imdbId => {
+            if (imdbId) {
+                IMDB[title] = imdbId;
+                syncToFile();
+            }
+        });
+    }
+
     syncToFile();
     closeAdd();
+    searchBox.value = title;
+    updateSearchClear();
     render();
     showToast(`"${title}" toegevoegd`);
 });
@@ -1196,6 +1225,247 @@ function mapTmdbLang(code) {
     return map[code] || code || '';
 }
 
+// ══════════════════════════════════════════════
+// ── FEATURE 5: BULK IMPORT ──
+// ══════════════════════════════════════════════
+const importOverlay = document.getElementById('importOverlay');
+const importTextarea = document.getElementById('importTextarea');
+const importCount = document.getElementById('importCount');
+const importStart = document.getElementById('importStart');
+const importCancel = document.getElementById('importCancel');
+const importConfirm = document.getElementById('importConfirm');
+const importReviewList = document.getElementById('importReviewList');
+const importSummary = document.getElementById('importSummary');
+const importProgressFill = document.getElementById('importProgressFill');
+const importProgressText = document.getElementById('importProgressText');
+const importProgressCurrent = document.getElementById('importProgressCurrent');
+
+let importResults = [];
+let importCancelled = false;
+
+function showImportStep(step) {
+    document.getElementById('importStepInput').style.display = step === 'input' ? '' : 'none';
+    document.getElementById('importStepProgress').style.display = step === 'progress' ? '' : 'none';
+    document.getElementById('importStepReview').style.display = step === 'review' ? '' : 'none';
+}
+
+function openImport() {
+    if (!tmdbKey) {
+        tmdbOverlay.classList.add('visible');
+        tmdbKeyInput.value = tmdbKey;
+        tmdbKeyInput.type = 'password';
+        keyToggle.classList.remove('visible');
+        setTimeout(() => tmdbKeyInput.focus(), 200);
+        showToast('Stel eerst een TMDB API key in');
+        return;
+    }
+    closeAdd();
+    importTextarea.value = '';
+    importCount.textContent = '0 titels';
+    importResults = [];
+    importCancelled = false;
+    showImportStep('input');
+    importOverlay.classList.add('visible');
+    setTimeout(() => importTextarea.focus(), 200);
+}
+
+function closeImport() {
+    importOverlay.classList.remove('visible');
+    importCancelled = true;
+}
+
+function parseImportLines(text) {
+    const seen = new Set();
+    return text.split(/\n/)
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .filter(l => {
+            const key = l.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+}
+
+async function searchTmdbSingle(query) {
+    const url = `https://api.themoviedb.org/3/search/multi?api_key=${encodeURIComponent(tmdbKey)}&query=${encodeURIComponent(query)}&language=nl-NL&include_adult=false`;
+    const resp = await fetch(url);
+    if (resp.status === 429) {
+        await new Promise(r => setTimeout(r, 2000));
+        const retry = await fetch(url);
+        if (!retry.ok) return null;
+        const data = await retry.json();
+        return (data.results || []).filter(r => r.media_type === 'movie' || r.media_type === 'tv')[0] || null;
+    }
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return (data.results || []).filter(r => r.media_type === 'movie' || r.media_type === 'tv')[0] || null;
+}
+
+function buildItemFromTmdb(r) {
+    return {
+        t: r.title || r.name || '',
+        y: (r.release_date || r.first_air_date || '').slice(0, 4),
+        type: r.media_type === 'movie' ? 'film' : 'serie',
+        lang: mapTmdbLang(r.original_language),
+        d: r.overview || '',
+        img: r.poster_path ? `https://image.tmdb.org/t/p/w400${r.poster_path}` : '',
+        g: tmdbGenreNames(r.genre_ids)
+    };
+}
+
+async function fetchImdbId(tmdbId, mediaType) {
+    if (!tmdbKey || !tmdbId) return null;
+    const type = mediaType === 'movie' ? 'movie' : 'tv';
+    try {
+        const url = `https://api.themoviedb.org/3/${type}/${tmdbId}/external_ids?api_key=${encodeURIComponent(tmdbKey)}`;
+        const resp = await fetch(url);
+        if (resp.status === 429) {
+            await new Promise(r => setTimeout(r, 2000));
+            const retry = await fetch(url);
+            if (!retry.ok) return null;
+            const data = await retry.json();
+            return data.imdb_id || null;
+        }
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        return data.imdb_id || null;
+    } catch {
+        return null;
+    }
+}
+
+async function startImportLookup(titles) {
+    showImportStep('progress');
+    importCancelled = false;
+    importResults = [];
+    const total = titles.length;
+
+    for (let i = 0; i < total; i++) {
+        if (importCancelled) break;
+        const title = titles[i];
+        importProgressFill.style.width = ((i + 1) / total * 100) + '%';
+        importProgressText.textContent = `${i + 1} / ${total}`;
+        importProgressCurrent.textContent = title;
+
+        // Check duplicate
+        const existingKey = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (DATA.some(d => getKey(d) === existingKey)) {
+            importResults.push({ query: title, status: 'duplicate', item: null });
+        } else {
+            try {
+                const r = await searchTmdbSingle(title);
+                if (r) {
+                    const imdbId = await fetchImdbId(r.id, r.media_type);
+                    importResults.push({ query: title, status: 'found', item: buildItemFromTmdb(r), tmdbResult: r, imdbId });
+                } else {
+                    importResults.push({ query: title, status: 'not_found', item: null });
+                }
+            } catch {
+                importResults.push({ query: title, status: 'not_found', item: null });
+            }
+        }
+        if (i < total - 1 && !importCancelled) await new Promise(r => setTimeout(r, 250));
+    }
+
+    showImportStep('review');
+    renderImportReview();
+}
+
+function renderImportReview() {
+    importReviewList.innerHTML = importResults.map((r, i) => {
+        const isFound = r.status === 'found';
+        const isDup = r.status === 'duplicate';
+        const rowClass = isDup ? 'import-row is-duplicate' : (isFound ? 'import-row' : 'import-row no-match');
+        const checked = isFound ? 'checked' : '';
+        const title = isFound ? escapeHtml(r.item.t) : escapeHtml(r.query);
+        const meta = isFound ? `${r.item.y} · ${r.item.type === 'serie' ? 'Serie' : 'Film'}` : '';
+        const poster = isFound && r.item.img
+            ? `<img class="import-row-poster" src="${r.item.img.replace('/w400', '/w92')}" alt="">`
+            : `<div class="import-row-poster" style="background:rgba(255,255,255,.05)"></div>`;
+        const status = isDup
+            ? '<span class="import-row-status duplicate">Al in je lijst</span>'
+            : (!isFound ? '<span class="import-row-status not-found">Niet gevonden</span>' : '');
+
+        return `<div class="${rowClass}">
+            <input type="checkbox" data-idx="${i}" ${checked}>
+            ${poster}
+            <div class="import-row-info">
+                <div class="import-row-title">${title}</div>
+                <div class="import-row-meta">${meta}</div>
+            </div>
+            ${status}
+        </div>`;
+    }).join('');
+
+    updateImportSummary();
+    importReviewList.addEventListener('change', updateImportSummary);
+}
+
+function updateImportSummary() {
+    const checks = importReviewList.querySelectorAll('input[type="checkbox"]');
+    const checked = [...checks].filter(c => c.checked).length;
+    importSummary.textContent = `${checked} van ${importResults.length} titels geselecteerd`;
+    importConfirm.disabled = checked === 0;
+    importConfirm.textContent = checked > 0 ? `${checked} titels toevoegen` : 'Toevoegen';
+}
+
+function confirmImport() {
+    const checks = importReviewList.querySelectorAll('input[type="checkbox"]');
+    let added = 0;
+    checks.forEach(cb => {
+        if (!cb.checked) return;
+        const idx = parseInt(cb.dataset.idx);
+        const r = importResults[idx];
+        if (r && r.item) {
+            DATA.push(r.item);
+            if (r.imdbId) IMDB[r.item.t] = r.imdbId;
+            added++;
+        }
+    });
+    if (added > 0) {
+        syncToFile();
+        populateDropdowns();
+        render();
+        showToast(`${added} titel${added === 1 ? '' : 's'} toegevoegd`);
+    }
+    closeImport();
+}
+
+// Import event listeners
+importTextarea.addEventListener('input', () => {
+    const lines = parseImportLines(importTextarea.value);
+    importCount.textContent = `${lines.length} titel${lines.length === 1 ? '' : 's'}`;
+});
+
+importStart.addEventListener('click', () => {
+    if (!tmdbKey) { openImport(); return; }
+    const titles = parseImportLines(importTextarea.value);
+    if (titles.length === 0) { importTextarea.focus(); return; }
+    startImportLookup(titles);
+});
+
+importCancel.addEventListener('click', () => { importCancelled = true; });
+importConfirm.addEventListener('click', confirmImport);
+document.getElementById('importBack').addEventListener('click', () => showImportStep('input'));
+document.getElementById('importSelectAll').addEventListener('click', () => {
+    importReviewList.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+    updateImportSummary();
+});
+document.getElementById('importSelectNone').addEventListener('click', () => {
+    importReviewList.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    updateImportSummary();
+});
+importOverlay.addEventListener('click', e => { if (e.target === importOverlay) closeImport(); });
+document.getElementById('importFromAddBtn').addEventListener('click', () => { closeAdd(); openImport(); });
+document.getElementById('importTmdbBtn').addEventListener('click', () => {
+    tmdbOverlay.classList.add('visible');
+    tmdbKeyInput.value = tmdbKey;
+    tmdbKeyInput.type = 'password';
+    keyToggle.classList.remove('visible');
+    setTimeout(() => tmdbKeyInput.focus(), 200);
+});
+
 // ── FILTER BADGE ──
 const resetFiltersBtn = document.getElementById('resetFiltersBtn');
 function updateFilterBadge() {
@@ -1213,6 +1483,7 @@ function updateFilterBadge() {
 // ── CENTRALIZED ESCAPE KEY ──
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    if (importOverlay.classList.contains('visible')) { closeImport(); return; }
     if (addOverlay.classList.contains('visible')) { closeAdd(); return; }
     if (pickerOverlay.classList.contains('visible')) { closePicker(); return; }
     if (tmdbOverlay.classList.contains('visible')) { tmdbOverlay.classList.remove('visible'); return; }
@@ -1221,6 +1492,73 @@ document.addEventListener('keydown', e => {
 // ── SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ── BACKFILL MISSING IMDB IDS ──
+async function searchTmdbTyped(query, type) {
+    if (!tmdbKey) return null;
+    const endpoint = type === 'serie' ? 'search/tv' : 'search/movie';
+    const url = `https://api.themoviedb.org/3/${endpoint}?api_key=${encodeURIComponent(tmdbKey)}&query=${encodeURIComponent(query)}&language=nl-NL&include_adult=false`;
+    try {
+        const resp = await fetch(url);
+        if (resp.status === 429) {
+            await new Promise(r => setTimeout(r, 2000));
+            const retry = await fetch(url);
+            if (!retry.ok) return null;
+            return (await retry.json()).results || [];
+        }
+        if (!resp.ok) return null;
+        return (await resp.json()).results || [];
+    } catch {
+        return null;
+    }
+}
+
+function bestTmdbMatch(results, item) {
+    if (!results || results.length === 0) return null;
+    const itemYear = parseInt(item.y);
+    // Prefer exact year match
+    if (itemYear) {
+        const yearMatch = results.find(r => {
+            const rYear = parseInt((r.release_date || r.first_air_date || '').slice(0, 4));
+            return rYear === itemYear;
+        });
+        if (yearMatch) return yearMatch;
+        // Accept ±1 year (release date differences between regions)
+        const closeMatch = results.find(r => {
+            const rYear = parseInt((r.release_date || r.first_air_date || '').slice(0, 4));
+            return Math.abs(rYear - itemYear) <= 1;
+        });
+        if (closeMatch) return closeMatch;
+    }
+    // Fallback: first result only if title matches closely
+    const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const itemNorm = norm(item.t);
+    const titleMatch = results.find(r => norm(r.title || r.name) === itemNorm);
+    return titleMatch || null;
+}
+
+async function backfillImdbIds() {
+    if (!tmdbKey) return;
+    const missing = DATA.filter(item => item.t && !IMDB[item.t]);
+    if (missing.length === 0) return;
+    let updated = 0;
+    for (const item of missing) {
+        const results = await searchTmdbTyped(item.t, item.type);
+        const match = bestTmdbMatch(results, item);
+        if (!match) continue;
+        const mediaType = item.type === 'serie' ? 'tv' : 'movie';
+        const imdbId = await fetchImdbId(match.id, mediaType);
+        if (imdbId) {
+            IMDB[item.t] = imdbId;
+            updated++;
+        }
+        await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    if (updated > 0) {
+        syncToFile();
+        console.info(`Backfill: ${updated} IMDb IDs toegevoegd`);
+    }
 }
 
 // ── INIT ──
@@ -1233,3 +1571,5 @@ if (viewMode !== 'grid') {
 // Eerste render toont localStorage data; loadState overschrijft met server data
 render();
 loadState();
+// Backfill missing IMDb IDs silently in background
+setTimeout(backfillImdbIds, 3000);

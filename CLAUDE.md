@@ -16,10 +16,10 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~1583 regels)
+css/style.css       → Alle styling (één bestand, ~1813 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1202 regels)
+js/app.js           → Alle applicatielogica (~1575 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
 state.json          → User state: watched, ratings, order, tmdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
@@ -83,27 +83,30 @@ border: 1px solid rgba(255,255,255,.08);
 |---------|------------------|
 | syncToFile() (data.js sync) | Regels 1-14 |
 | State vars + save functies + debouncedSyncState/loadState | ~16-84 |
-| Helpers (hashColor, getKey, escapeHtml, etc.) | ~86-142 |
+| Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~86-142 |
 | Star rating HTML helpers + ratingBlockHtml | ~143-192 |
 | View mode (grid/list) | ~193-200 |
-| Dropdowns (single-pass populatie) | ~212-234 |
+| populateDropdowns() (single-pass) | ~213-234 |
 | Dynamic dropdown counts | ~236-277 |
-| Toast notifications (showToast + undo) | ~279-301 |
-| Render (central, incl. empty-state + filter hints) | ~303-455 |
-| toggleWatch (met toast + undo) | ~457-484 |
-| removeItem (met toast + undo, geen confirm) | ~486-527 |
-| Star rating interaction | ~529-566 |
-| Sparkle effect (5 sterren) | ~568-585 |
-| Stat pills als filter shortcuts | ~620-635 |
-| resetFilters() | ~637-647 |
-| Hero poster mosaic builder | ~655-680 |
-| Add title modal + TMDB | ~682-758 |
-| openAdd() (met prefill + directe TMDB search) | ~689-709 |
-| Random picker | ~758-875 |
-| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~876-1018 |
-| TMDB auto-complete | ~1020-1166 |
-| Filter badge (updateFilterBadge) | ~1168-1179 |
-| Centralized Escape key handler | ~1180-1187 |
+| Toast notifications (showToast + undo) | ~287-307 |
+| Render (central, incl. empty-state + filter hints) | ~309-464 |
+| Card description expand/collapse (click handler) | ~466-469 |
+| toggleWatch (met confirm + toast + undo) | ~472-500 |
+| removeItem (met confirm + toast + undo) | ~501-540 |
+| Star rating interaction | ~542-580 |
+| Sparkle effect (5 sterren) | ~596-610 |
+| Stat pills als filter shortcuts | ~647-660 |
+| resetFilters() | ~664-674 |
+| Hero poster mosaic builder | ~683-707 |
+| Add title modal + TMDB + IMDb fetch | ~728-800 |
+| Random picker | ~810-875 |
+| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~936-1060 |
+| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1080-1210 |
+| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1229-1428 |
+| Filter badge (updateFilterBadge) | ~1469-1475 |
+| Centralized Escape key handler | ~1483-1484 |
+| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1491-1560 |
+| Init + loadState + backfill trigger | ~1564-1575 |
 
 ## Conventies
 
@@ -122,11 +125,23 @@ border: 1px solid rgba(255,255,255,.08);
 
 ### UX patronen
 - `showToast(message, undoFn)` voor feedback bij acties; met optionele undo-callback (5s timeout)
-- Destructieve acties (verwijderen, watch toggle) hebben altijd een undo-optie
+- Destructieve acties (verwijderen, watch toggle) hebben `confirm()` + toast met undo-optie
 - `updateFilterBadge()` toont een gouden dot op de Filter-knop + "reset" knop bij actieve filters
 - Escape key sluit alle modals/overlays (centralized handler)
 - `render()` bewaart scroll positie via `window.scrollY`
 - `@media (prefers-reduced-motion: reduce)` schakelt alle animaties uit
+- Card-beschrijvingen zijn afgekapt op 3 regels (grid) / 2 regels (list); klik om uit te vouwen
+- Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
+- Search clear-knop (✕) naast het zoekveld op desktop
+
+### IMDb auto-linking
+- `IMDB` object in `data.js` mapt titels → IMDb IDs
+- `fetchImdbId(tmdbId, mediaType)` haalt IMDb ID op via TMDB `/external_ids` endpoint
+- Bij single add via TMDB: IMDb ID wordt op de achtergrond opgehaald en opgeslagen
+- Bij bulk import: IMDb ID per titel opgehaald tijdens lookup
+- `backfillImdbIds()` draait 3s na init; valideert alleen titels zonder IMDB entry
+- `searchTmdbTyped()` zoekt type-specifiek (`/search/movie` of `/search/tv`)
+- `bestTmdbMatch()` matcht op jaar (exact → ±1 → titel-match) om foute matches te voorkomen
 
 ### Data formaat (data.js)
 ```javascript
@@ -143,7 +158,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → verander `'kijklijst-v6'` naar `'kijklijst-v7'` etc.
+- **Bump na elke wijziging** aan static assets → verander `'kijklijst-v8'` naar `'kijklijst-v9'` etc.
 - `data.js` staat **niet** in STATIC_ASSETS (verandert bij elke add/remove)
 - Cache strategieën:
   - Static assets (excl. data.js) → cache-first
