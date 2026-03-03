@@ -21,6 +21,7 @@ Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Geen acco
   - [Random picker](#random-picker)
   - [Drag-and-drop volgorde](#drag-and-drop-volgorde)
   - [TMDB auto-complete](#tmdb-auto-complete)
+  - [Bulk import](#bulk-import)
 - [TMDB API key instellen](#tmdb-api-key-instellen)
 - [Dataopslag](#dataopslag)
 - [Projectstructuur](#projectstructuur)
@@ -108,8 +109,12 @@ Na installatie opent de app fullscreen zonder adresbalk.
 - Het item wordt volledig verwijderd (inclusief rating en watch-status)
 
 **Links:**
-- **IMDb** — opent de IMDb-pagina van de titel
+- **IMDb** — opent de IMDb-pagina van de titel (IMDb IDs worden automatisch opgehaald via TMDB)
 - **Waar te kijken** — zoekt op JustWatch waar je de titel kunt streamen in Nederland
+
+**Beschrijvingen:**
+- Beschrijvingen zijn afgekapt op 3 regels (grid) of 2 regels (lijst)
+- Klik op de tekst om de volledige beschrijving te zien, klik nogmaals om in te klappen
 
 ### Filters & zoeken
 
@@ -193,8 +198,26 @@ Met een (gratis) TMDB API key kun je bij het toevoegen van titels automatisch zo
 - Klik op een resultaat → alle velden worden automatisch ingevuld:
   - Titel, jaar, type, taal, genres, beschrijving en poster-afbeelding
 - Je kunt de ingevulde gegevens nog aanpassen voordat je op "Toevoegen" klikt
+- Na toevoegen wordt de zoekbalk automatisch gevuld met de titel, zodat je direct je nieuwe toevoeging ziet
 
 **Zonder API key** werkt handmatig toevoegen gewoon — je typt dan zelf de titel en kiest het type.
+
+### Bulk import
+
+Heb je een lijst met titels (bijv. uit een spreadsheet of kladblok)? Importeer ze in één keer:
+
+1. Klik op **+** → klik onderaan op **"📋 Lijst importeren"**
+2. Plak je titels (één per regel) in het tekstveld
+3. Klik **"Importeren"** — elke titel wordt opgezocht in TMDB (voortgangsbalk zichtbaar)
+4. **Review:** bekijk de resultaten — per titel zie je:
+   - **Gevonden:** poster, titel, jaar, type — standaard aangevinkt
+   - **Al in je lijst:** gedempt weergegeven, niet aangevinkt
+   - **Niet gevonden:** rood label, niet aangevinkt
+5. Pas je selectie aan en klik **"Toevoegen"**
+
+Je kunt het importproces halverwege annuleren — de tot-dan-toe opgehaalde resultaten worden dan getoond in het review-scherm.
+
+> **Tip:** de bulk import is ook bereikbaar via een knop in de lege state (als je nog geen titels hebt).
 
 ---
 
@@ -357,10 +380,10 @@ Je titels staan in `js/data.js` en je voorkeuren (gezien-status, ratings, volgor
 Ja. Start de server op je computer en open `http://<je-lokale-ip>:8420` op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je lokale IP vind je via `ipconfig getifaddr en0` (macOS) of `hostname -I` (Linux) — het is iets als `192.168.x.x`, niet je publieke IP. Je kunt de app ook installeren als PWA via je mobiele browser.
 
 **Hoe voeg ik meer films toe aan de standaard-database?**
-Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. Voeg optioneel de IMDb-ID toe aan het `IMDB`-object voor directe links.
+Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. IMDb IDs worden automatisch opgehaald via TMDB bij de eerstvolgende paginalading (backfill).
 
 **De service worker cachet een oude versie. Hoe forceer ik een update?**
-Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v6` naar `kijklijst-v7`). Bij de volgende paginalading wordt de oude cache verwijderd.
+Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v8` naar `kijklijst-v9`). Bij de volgende paginalading wordt de oude cache verwijderd.
 
 **Kan ik de app delen met anderen?**
 Ja, clone de repository en volg de instructies bij [Starten](#starten). De ander kopieert `data.example.js` naar `data.js` en begint met een lege lijst. Alle titels die ze toevoegen via de app worden automatisch opgeslagen in hun eigen `data.js`.
