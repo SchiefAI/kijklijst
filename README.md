@@ -100,10 +100,11 @@ Na installatie opent de app fullscreen zonder adresbalk.
 - Klik "○ Markeer als gezien" op een card
 - De card wordt gedempt weergegeven met een groen ✓ vinkje
 - Klik nogmaals om de markering ongedaan te maken
+- Bij elke actie verschijnt een toast-melding met **"Ongedaan maken"** optie
 
 **Verwijderen:**
 - Klik op het kleine **✕** knopje rechts van de IMDb/JustWatch links
-- Bevestig met "OK" in de popup
+- Het item wordt verwijderd — een toast-melding verschijnt met een **"Ongedaan maken"** knop (5 seconden)
 - Het item wordt volledig verwijderd (inclusief rating en watch-status)
 
 **Links:**
@@ -121,6 +122,8 @@ Na installatie opent de app fullscreen zonder adresbalk.
 | **Zoeken** | Vrij tekstveld — filtert direct op titel (250ms vertraging). Bij geen resultaten: "Zoek in TMDB →" link. Bij actieve filters zonder resultaten: "Filters resetten" knop |
 
 **Shortcut:** klik op de statistiek-pills in de header ("65 films", "19 series", "5 gezien") om direct te filteren op die categorie.
+
+**Reset filters:** bij actieve filters verschijnt een "reset" knop in het filterpaneel + een gouden indicator-dot op de "Filters" knop (mobiel).
 
 De genre- en taaldropdowns tonen dynamisch hoeveel resultaten er per optie zijn, rekening houdend met de actieve filters.
 
@@ -151,7 +154,7 @@ Na het markeren van een titel als "gezien" verschijnen er interactieve sterren:
 - **Klik op een ster** om een rating te geven (1-5)
 - **Klik op de linkerhelft** van een ster voor een halve ster (bijv. 3.5)
 - **Rating wijzigen:** klik gewoon op een andere ster
-- **Review:** typ een korte one-liner in het tekstveld onder de sterren (max 120 tekens)
+- **Review:** na het geven van een rating verschijnt een tekstveld voor een korte one-liner (max 120 tekens)
 
 Bij een **5-sterren rating** verschijnt een gouden sparkle-animatie over de card.
 
@@ -162,10 +165,11 @@ Weet je niet wat je wilt kijken? Klik op **🎲 Random** in de controls-balk.
 1. Een slot-machine-animatie draait door willekeurige posters van onbekeken titels
 2. De animatie vertraagt en stopt bij een willekeurige titel
 3. Je ziet de volledige info: poster, titel, jaar, type, taal, genres en beschrijving
-4. Keuze uit:
-   - **✓ Vanavond kijken!** — markeert als gezien en sluit
+4. Je ziet links naar **IMDb** en **Waar te kijken** (JustWatch) om direct te checken waar het beschikbaar is
+5. Keuze uit:
    - **🎲 Nog een** — draait opnieuw
-   - **Sluiten** — terug naar de lijst
+   - **Sluiten** — terug naar de lijst (of druk op Escape)
+   - *Al gezien? Markeer als gezien* — subtiele link onderaan om direct als gezien te markeren (met undo-toast)
 
 Als alles al gezien is, toont de picker: "Alles al gezien! 🎉"
 
@@ -307,7 +311,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 
 | Bron | Strategie |
 |------|-----------|
-| Statische bestanden (HTML, CSS, JS) | Cache-first, fallback naar netwerk |
+| Statische bestanden (HTML, CSS, JS) | Cache-first, fallback naar netwerk (`data.js` uitgezonderd — altijd via netwerk) |
 | Google Fonts | Cache-first (veranderen zelden) |
 | Poster-afbeeldingen (Amazon/TMDB) | Network-first, fallback naar cache |
 | `/api/*` endpoints | Altijd netwerk (nooit gecached) |
@@ -356,7 +360,7 @@ Ja. Start de server op je computer en open `http://<je-lokale-ip>:8420` op je te
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. Voeg optioneel de IMDb-ID toe aan het `IMDB`-object voor directe links.
 
 **De service worker cachet een oude versie. Hoe forceer ik een update?**
-Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v5` naar `kijklijst-v6`). Bij de volgende paginalading wordt de oude cache verwijderd.
+Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v6` naar `kijklijst-v7`). Bij de volgende paginalading wordt de oude cache verwijderd.
 
 **Kan ik de app delen met anderen?**
 Ja, clone de repository en volg de instructies bij [Starten](#starten). De ander kopieert `data.example.js` naar `data.js` en begint met een lege lijst. Alle titels die ze toevoegen via de app worden automatisch opgeslagen in hun eigen `data.js`.

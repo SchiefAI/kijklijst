@@ -15,30 +15,36 @@ async function syncToFile() {
 
 // ── STATE (server-synced) ──
 let watched = {};
-try { watched = JSON.parse(localStorage.getItem('kijklijst_watched') || '{}'); } catch(e) {}
+try { watched = JSON.parse(localStorage.getItem('kijklijst_watched') || '{}'); } catch(e) { console.error('Parse watched:', e); }
 
 let ratings = {};
-try { ratings = JSON.parse(localStorage.getItem('kijklijst_ratings') || '{}'); } catch(e) {}
+try { ratings = JSON.parse(localStorage.getItem('kijklijst_ratings') || '{}'); } catch(e) { console.error('Parse ratings:', e); }
 
 let customOrder = [];
-try { customOrder = JSON.parse(localStorage.getItem('kijklijst_order') || '[]'); } catch(e) {}
+try { customOrder = JSON.parse(localStorage.getItem('kijklijst_order') || '[]'); } catch(e) { console.error('Parse order:', e); }
 
 let tmdbKey = '';
-try { tmdbKey = localStorage.getItem('kijklijst_tmdb_key') || ''; } catch(e) {}
+try { tmdbKey = localStorage.getItem('kijklijst_tmdb_key') || ''; } catch(e) { console.error('Read tmdb_key:', e); }
 
 function saveWatched() {
-    try { localStorage.setItem('kijklijst_watched', JSON.stringify(watched)); } catch(e) {}
-    syncState();
+    try { localStorage.setItem('kijklijst_watched', JSON.stringify(watched)); } catch(e) { console.error('Save watched:', e); }
+    debouncedSyncState();
 }
 
 function saveRatings() {
-    try { localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings)); } catch(e) {}
-    syncState();
+    try { localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings)); } catch(e) { console.error('Save ratings:', e); }
+    debouncedSyncState();
 }
 
 function saveCustomOrder() {
-    try { localStorage.setItem('kijklijst_order', JSON.stringify(customOrder)); } catch(e) {}
-    syncState();
+    try { localStorage.setItem('kijklijst_order', JSON.stringify(customOrder)); } catch(e) { console.error('Save order:', e); }
+    debouncedSyncState();
+}
+
+let _syncTimer = null;
+function debouncedSyncState() {
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(syncState, 300);
 }
 
 async function syncState() {
@@ -50,7 +56,7 @@ async function syncState() {
                 watched, ratings, order: customOrder, tmdb_key: tmdbKey
             })
         });
-    } catch(e) { /* server niet beschikbaar — stille fallback */ }
+    } catch(e) { console.info('State sync niet beschikbaar:', e.message); }
 }
 
 async function loadState() {
@@ -73,7 +79,7 @@ async function loadState() {
             // Server is leeg — seed met huidige localStorage data
             await syncState();
         }
-    } catch(e) { /* server niet beschikbaar, localStorage fallback werkt al */ }
+    } catch(e) { console.info('State laden niet beschikbaar:', e.message); }
     render();
 }
 
@@ -104,7 +110,7 @@ function genreBadges(g) {
     if (!g) return '';
     return '<div class="genre-badges">' +
         g.split(', ').map(genre =>
-            `<span class="genre-badge">${GENRE_ICONS[genre] || '🎬'} ${genre}</span>`
+            `<span class="genre-badge">${GENRE_ICONS[genre] || '🎬'} ${escapeHtml(genre)}</span>`
         ).join('') + '</div>';
 }
 
@@ -119,14 +125,19 @@ function jwUrl(title) {
 
 function subtitle(item) {
     const parts = [];
-    if (item.y) parts.push(item.y);
+    if (item.y) parts.push(escapeHtml(item.y));
     if (item.type) parts.push(item.type === 'serie' ? 'Serie' : 'Film');
-    if (item.g) parts.push(item.g);
+    if (item.g) parts.push(escapeHtml(item.g));
     return parts.join(' · ');
 }
 
 function escapeAttr(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── STAR RATING HTML ──
@@ -171,8 +182,10 @@ function ratingBlockHtml(key, isWatched) {
 
     let html = '<div class="rating-wrap">';
     html += starRatingHtml(key, stars);
-    html += `<input type="text" class="review-input" data-key="${key}" placeholder="One-liner review..." maxlength="120" value="${escapeAttr(review)}">`;
-    if (review && stars > 0) html += `<div class="review-text">"${review}"</div>`;
+    if (stars > 0) {
+        html += `<input type="text" class="review-input" data-key="${key}" placeholder="One-liner review..." maxlength="120" value="${escapeAttr(review)}">`;
+        if (review) html += `<div class="review-text">"${escapeHtml(review)}"</div>`;
+    }
     html += '</div>';
     return html;
 }
@@ -198,24 +211,24 @@ const viewToggle = document.getElementById('viewToggle');
 
 // ── DROPDOWNS ──
 (function populateDropdowns() {
-    const genreSet = new Set();
+    const genreCounts = {};
+    const langCounts = {};
     DATA.forEach(i => {
-        if (i.g) i.g.split(', ').forEach(g => genreSet.add(g));
+        if (i.g) i.g.split(', ').forEach(g => { genreCounts[g] = (genreCounts[g] || 0) + 1; });
+        if (i.lang) langCounts[i.lang] = (langCounts[i.lang] || 0) + 1;
     });
-    [...genreSet].sort((a, b) => a.localeCompare(b, 'nl')).forEach(genre => {
-        const count = DATA.filter(i => i.g && i.g.split(', ').includes(genre)).length;
+
+    Object.keys(genreCounts).sort((a, b) => a.localeCompare(b, 'nl')).forEach(genre => {
         const opt = document.createElement('option');
         opt.value = genre;
-        opt.textContent = `${genre} (${count})`;
+        opt.textContent = `${genre} (${genreCounts[genre]})`;
         genreFilter.appendChild(opt);
     });
 
-    const langs = [...new Set(DATA.map(i => i.lang).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl'));
-    langs.forEach(lang => {
-        const count = DATA.filter(i => i.lang === lang).length;
+    Object.keys(langCounts).sort((a, b) => a.localeCompare(b, 'nl')).forEach(lang => {
         const opt = document.createElement('option');
         opt.value = lang;
-        opt.textContent = `${lang} (${count})`;
+        opt.textContent = `${lang} (${langCounts[lang]})`;
         langFilter.appendChild(opt);
     });
 })();
@@ -261,6 +274,30 @@ function updateDropdownCounts(query, typeVal, statusVal, genreVal, langVal) {
             opt.disabled = c === 0;
         }
     });
+}
+
+// ── TOAST NOTIFICATIONS ──
+const toastContainer = document.getElementById('toastContainer');
+
+function showToast(message, undoFn) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = escapeHtml(message);
+    if (undoFn) {
+        const btn = document.createElement('button');
+        btn.className = 'undo-btn';
+        btn.textContent = 'Ongedaan maken';
+        btn.addEventListener('click', () => {
+            undoFn();
+            el.remove();
+        });
+        el.appendChild(btn);
+    }
+    toastContainer.appendChild(el);
+    setTimeout(() => {
+        el.classList.add('out');
+        el.addEventListener('animationend', () => el.remove());
+    }, undoFn ? 5000 : 2500);
 }
 
 // ── RENDER ──
@@ -314,6 +351,7 @@ function render() {
 
     grid.classList.toggle('list-view', viewMode === 'list');
 
+    const scrollY = window.scrollY;
     const isDragMode = sortVal === 'custom';
 
     if (items.length === 0) {
@@ -364,18 +402,18 @@ function render() {
             <div class="card ${isWatched ? 'is-watched' : ''}" data-key="${key}"${dragAttr}>
                 <div class="poster-wrap">
                     <div class="poster-gradient" style="background:${hashColor(item.t)}">${initials(item.t)}</div>
-                    ${hasImg ? `<img class="poster-img" src="${item.img}" alt="${item.t}" style="display:block" onerror="this.style.display='none'">` : ''}
+                    ${hasImg ? `<img class="poster-img" src="${item.img}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
                     <span class="type-badge ${item.type}">${item.type === 'serie' ? 'Serie' : 'Film'}</span>
                     ${isWatched ? '<span class="watched-check">✓</span>' : ''}
                 </div>
                 <div class="card-body">
                     <div class="list-info">
                         <div class="list-title-row">
-                            <div class="card-title">${item.t}</div>
+                            <div class="card-title">${escapeHtml(item.t)}</div>
                             ${genreBadges(item.g)}
                         </div>
                         <div class="card-subtitle">${subtitle(item)}</div>
-                        ${item.d ? `<div class="list-desc">${item.d}</div>` : ''}
+                        ${item.d ? `<div class="list-desc">${escapeHtml(item.d)}</div>` : ''}
                         ${ratingHtml}
                     </div>
                     <div class="list-actions">
@@ -390,15 +428,15 @@ function render() {
         <div class="card ${isWatched ? 'is-watched' : ''}" data-key="${key}"${dragAttr}>
             <div class="poster-wrap">
                 <div class="poster-gradient" style="background:${hashColor(item.t)}">${initials(item.t)}</div>
-                ${hasImg ? `<img class="poster-img" src="${item.img}" alt="${item.t}" style="display:block" onerror="this.style.display='none'">` : ''}
+                ${hasImg ? `<img class="poster-img" src="${item.img}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
                 <span class="type-badge ${item.type}">${item.type === 'serie' ? 'Serie' : 'Film'}</span>
                 ${isWatched ? '<span class="watched-check">✓</span>' : ''}
             </div>
             <div class="card-body">
-                <div class="card-title">${item.t}</div>
-                ${item.y ? `<div class="card-year">${item.y}</div>` : ''}
+                <div class="card-title">${escapeHtml(item.t)}</div>
+                ${item.y ? `<div class="card-year">${escapeHtml(item.y)}</div>` : ''}
                 ${genreBadges(item.g)}
-                <div class="card-desc">${item.d}</div>
+                ${item.d ? `<div class="card-desc">${escapeHtml(item.d)}</div>` : ''}
                 ${linksHtml}
                 ${watchHtml}
                 ${ratingHtml}
@@ -408,34 +446,75 @@ function render() {
 
     // Re-attach drag events if in custom sort mode
     if (isDragMode) initDragAndDrop();
+
+    // Restore scroll position after re-render
+    window.scrollTo(0, scrollY);
+
+    // Update filter badge
+    updateFilterBadge();
 }
 
 function toggleWatch(key) {
-    watched[key] = !watched[key];
-    if (!watched[key]) {
+    const wasWatched = !!watched[key];
+    const oldRating = ratings[key] ? { ...ratings[key] } : null;
+
+    if (wasWatched) {
         delete watched[key];
         delete ratings[key];
         saveRatings();
+    } else {
+        watched[key] = true;
     }
     saveWatched();
     render();
+
+    const item = DATA.find(i => getKey(i) === key);
+    const title = item ? item.t : key;
+    showToast(wasWatched ? `"${title}" als niet-gezien gemarkeerd` : `"${title}" als gezien gemarkeerd`, () => {
+        if (wasWatched) {
+            watched[key] = true;
+            if (oldRating) ratings[key] = oldRating;
+            saveRatings();
+        } else {
+            delete watched[key];
+        }
+        saveWatched();
+        render();
+    });
 }
 
 function removeItem(key, title) {
-    if (!confirm(`"${title}" verwijderen van je kijklijst?`)) return;
     const idx = DATA.findIndex(i => getKey(i) === key);
-    if (idx > -1) DATA.splice(idx, 1);
-    // Verwijder ook uit IMDB mapping
+    if (idx === -1) return;
+    const removedItem = { ...DATA[idx] };
+    const removedImdb = IMDB[title] || null;
+    const removedWatched = watched[key] || false;
+    const removedRating = ratings[key] ? { ...ratings[key] } : null;
+    const removedOrderIdx = customOrder.indexOf(key);
+
+    DATA.splice(idx, 1);
     if (IMDB[title]) delete IMDB[title];
     delete watched[key];
     saveWatched();
     delete ratings[key];
     saveRatings();
-    const oIdx = customOrder.indexOf(key);
-    if (oIdx > -1) customOrder.splice(oIdx, 1);
+    if (removedOrderIdx > -1) customOrder.splice(removedOrderIdx, 1);
     saveCustomOrder();
     syncToFile();
     render();
+
+    showToast(`"${title}" verwijderd`, () => {
+        DATA.splice(idx, 0, removedItem);
+        if (removedImdb) IMDB[title] = removedImdb;
+        if (removedWatched) watched[key] = true;
+        if (removedRating) ratings[key] = removedRating;
+        if (removedOrderIdx > -1) customOrder.splice(removedOrderIdx, 0, key);
+        saveWatched();
+        saveRatings();
+        saveCustomOrder();
+        syncToFile();
+        render();
+    });
 }
 
 function updateStats() {
@@ -668,11 +747,11 @@ addSubmit.addEventListener('click', () => {
     syncToFile();
     closeAdd();
     render();
+    showToast(`"${title}" toegevoegd`);
 });
 
 addTitleInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !tmdbResultsEl.classList.contains('visible')) addSubmit.click();
-    if (e.key === 'Escape') closeAdd();
 });
 
 // ══════════════════════════════════════════════
@@ -689,6 +768,9 @@ const pickerDesc = document.getElementById('pickerDesc');
 const pickWatch = document.getElementById('pickWatch');
 const pickAgain = document.getElementById('pickAgain');
 const pickClose = document.getElementById('pickClose');
+const pickImdb = document.getElementById('pickImdb');
+const pickJw = document.getElementById('pickJw');
+const pickerLinks = document.getElementById('pickerLinks');
 
 let pickerCurrent = null;
 
@@ -714,11 +796,13 @@ function spinPicker() {
         pickerSlot.innerHTML = '<div class="picker-empty">Alles al gezien! 🎉</div>';
         pickWatch.style.display = 'none';
         pickAgain.style.display = 'none';
+        pickerLinks.style.display = 'none';
         return;
     }
 
     pickWatch.style.display = '';
     pickAgain.style.display = '';
+    pickerLinks.style.display = '';
     pickerInfo.classList.remove('visible');
 
     // Build slot images from random subset
@@ -766,9 +850,12 @@ function showPickerResult(item) {
     if (item.y) parts.push(item.y);
     if (item.type) parts.push(item.type === 'serie' ? 'Serie' : 'Film');
     if (item.lang) parts.push(item.lang);
+    if (item.g) parts.push(item.g);
     pickerMeta.textContent = parts.join(' · ');
-    pickerBadges.innerHTML = genreBadges(item.g);
+    pickerBadges.innerHTML = '';
     pickerDesc.textContent = item.d || '';
+    pickImdb.href = imdbUrl(item.t);
+    pickJw.href = jwUrl(item.t);
     setTimeout(() => pickerInfo.classList.add('visible'), 200);
 }
 
@@ -781,10 +868,16 @@ pickAgain.addEventListener('click', spinPicker);
 pickWatch.addEventListener('click', () => {
     if (!pickerCurrent) return;
     const key = getKey(pickerCurrent);
+    const title = pickerCurrent.t;
     watched[key] = true;
     saveWatched();
     render();
     closePicker();
+    showToast(`"${title}" als gezien gemarkeerd`, () => {
+        delete watched[key];
+        saveWatched();
+        render();
+    });
 });
 
 // ══════════════════════════════════════════════
@@ -792,6 +885,20 @@ pickWatch.addEventListener('click', () => {
 // ══════════════════════════════════════════════
 let dragItem = null;
 let dragOverCard = null;
+
+function reorderCustomOrder(fromKey, toKey) {
+    const allKeys = [...grid.querySelectorAll('.card')].map(c => c.dataset.key);
+    if (customOrder.length === 0) {
+        customOrder = [...allKeys];
+    } else {
+        allKeys.forEach(k => { if (!customOrder.includes(k)) customOrder.push(k); });
+    }
+    const fromIdx = customOrder.indexOf(fromKey);
+    if (fromIdx > -1) customOrder.splice(fromIdx, 1);
+    const newToIdx = customOrder.indexOf(toKey);
+    customOrder.splice(newToIdx, 0, fromKey);
+    saveCustomOrder();
+}
 
 function initDragAndDrop() {
     const cards = grid.querySelectorAll('.card[draggable="true"]');
@@ -843,29 +950,7 @@ function handleDrop(e) {
     e.preventDefault();
     this.classList.remove('drag-over');
     if (!dragItem || this === dragItem) return;
-
-    const fromKey = dragItem.dataset.key;
-    const toKey = this.dataset.key;
-
-    // Ensure all current items are in customOrder
-    const allKeys = [...grid.querySelectorAll('.card')].map(c => c.dataset.key);
-    if (customOrder.length === 0) {
-        customOrder = [...allKeys];
-    } else {
-        // Add any missing keys
-        allKeys.forEach(k => {
-            if (!customOrder.includes(k)) customOrder.push(k);
-        });
-    }
-
-    // Move fromKey to toKey's position
-    const fromIdx = customOrder.indexOf(fromKey);
-    const toIdx = customOrder.indexOf(toKey);
-    if (fromIdx > -1) customOrder.splice(fromIdx, 1);
-    const newToIdx = customOrder.indexOf(toKey);
-    customOrder.splice(newToIdx, 0, fromKey);
-
-    saveCustomOrder();
+    reorderCustomOrder(dragItem.dataset.key, this.dataset.key);
     render();
 }
 
@@ -927,18 +1012,7 @@ function handleTouchEnd() {
 
     const overCard = grid.querySelector('.card.drag-over');
     if (overCard) {
-        const fromKey = touchDragEl.dataset.key;
-        const toKey = overCard.dataset.key;
-
-        const allKeys = [...grid.querySelectorAll('.card')].map(c => c.dataset.key);
-        if (customOrder.length === 0) customOrder = [...allKeys];
-        else allKeys.forEach(k => { if (!customOrder.includes(k)) customOrder.push(k); });
-
-        const fromIdx = customOrder.indexOf(fromKey);
-        if (fromIdx > -1) customOrder.splice(fromIdx, 1);
-        const newToIdx = customOrder.indexOf(toKey);
-        customOrder.splice(newToIdx, 0, fromKey);
-        saveCustomOrder();
+        reorderCustomOrder(touchDragEl.dataset.key, overCard.dataset.key);
     }
 
     touchDragEl.classList.remove('dragging');
@@ -961,6 +1035,7 @@ const tmdbKeySave = document.getElementById('tmdbKeySave');
 
 let selectedTmdbItem = null;
 let tmdbSearchTimeout = null;
+let tmdbResults = [];
 
 // TMDB genre ID → Dutch name mapping
 const TMDB_GENRES = {
@@ -980,9 +1055,16 @@ function tmdbGenreNames(genreIds) {
 }
 
 // TMDB settings
+const keyToggle = document.getElementById('keyToggle');
+keyToggle.addEventListener('click', () => {
+    const isVisible = keyToggle.classList.toggle('visible');
+    tmdbKeyInput.type = isVisible ? 'text' : 'password';
+});
 tmdbSettingsBtn.addEventListener('click', () => {
     tmdbOverlay.classList.add('visible');
     tmdbKeyInput.value = tmdbKey;
+    tmdbKeyInput.type = 'password';
+    keyToggle.classList.remove('visible');
     setTimeout(() => tmdbKeyInput.focus(), 200);
 });
 tmdbOverlay.addEventListener('click', e => {
@@ -996,7 +1078,6 @@ tmdbKeySave.addEventListener('click', () => {
 });
 tmdbKeyInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') tmdbKeySave.click();
-    if (e.key === 'Escape') tmdbOverlay.classList.remove('visible');
 });
 
 // Auto-complete search
@@ -1034,14 +1115,13 @@ async function searchTmdb(query) {
             return `<div class="tmdb-item" data-idx="${i}">
                 ${poster ? `<img src="${poster}" alt="">` : '<img src="" alt="" style="background:rgba(255,255,255,.05)">'}
                 <div class="tmdb-item-info">
-                    <div class="tmdb-item-title">${title}</div>
-                    <div class="tmdb-item-meta">${year} · ${type}</div>
+                    <div class="tmdb-item-title">${escapeHtml(title)}</div>
+                    <div class="tmdb-item-meta">${escapeHtml(year)} · ${type}</div>
                 </div>
             </div>`;
         }).join('');
 
-        // Store results for selection
-        tmdbResultsEl._results = results;
+        tmdbResults = results;
     } catch(err) {
         tmdbResultsEl.innerHTML = '<div class="tmdb-loading">Fout bij zoeken. Check je API key.</div>';
     }
@@ -1051,10 +1131,9 @@ tmdbResultsEl.addEventListener('click', e => {
     const item = e.target.closest('.tmdb-item');
     if (!item) return;
     const idx = parseInt(item.dataset.idx);
-    const results = tmdbResultsEl._results;
-    if (!results || !results[idx]) return;
+    if (!tmdbResults[idx]) return;
 
-    const r = results[idx];
+    const r = tmdbResults[idx];
     const title = r.title || r.name || '';
     const year = (r.release_date || r.first_air_date || '').slice(0, 4);
     const type = r.media_type === 'movie' ? 'film' : 'serie';
@@ -1094,6 +1173,28 @@ function mapTmdbLang(code) {
     return map[code] || code || '';
 }
 
+// ── FILTER BADGE ──
+const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+function updateFilterBadge() {
+    const typeBtn = typeFilter.querySelector('.active');
+    const statusBtn = statusFilter.querySelector('.active');
+    const hasActiveFilter =
+        (typeBtn && typeBtn.dataset.type !== 'all') ||
+        (statusBtn && statusBtn.dataset.status !== 'all') ||
+        genreFilter.value !== 'all' ||
+        langFilter.value !== 'all';
+    filterToggle.classList.toggle('has-filters', hasActiveFilter);
+    resetFiltersBtn.style.display = hasActiveFilter ? '' : 'none';
+}
+
+// ── CENTRALIZED ESCAPE KEY ──
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (addOverlay.classList.contains('visible')) { closeAdd(); return; }
+    if (pickerOverlay.classList.contains('visible')) { closePicker(); return; }
+    if (tmdbOverlay.classList.contains('visible')) { tmdbOverlay.classList.remove('visible'); return; }
+});
+
 // ── SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1105,5 +1206,7 @@ if (viewMode !== 'grid') {
     const savedBtn = viewToggle.querySelector(`[data-view="${viewMode}"]`);
     if (savedBtn) savedBtn.classList.add('active');
 }
+// loadState() roept render() aan na laden van server state
+// Eerste render toont localStorage data; loadState overschrijft met server data
 render();
 loadState();

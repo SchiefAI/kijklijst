@@ -93,10 +93,11 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'ok': True, 'count': len(data)}).encode())
 
             except Exception as e:
+                print(f'[ERROR] /api/save: {e}')
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'ok': False, 'error': str(e)}).encode())
+                self.wfile.write(json.dumps({'ok': False, 'error': 'Server error'}).encode())
         elif self.path == '/api/state':
             try:
                 length = int(self.headers.get('Content-Length', 0))
@@ -111,10 +112,11 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'ok': True}).encode())
 
             except Exception as e:
+                print(f'[ERROR] /api/state: {e}')
                 self.send_response(500)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'ok': False, 'error': str(e)}).encode())
+                self.wfile.write(json.dumps({'ok': False, 'error': 'Server error'}).encode())
         else:
             self.send_response(404)
             self.end_headers()

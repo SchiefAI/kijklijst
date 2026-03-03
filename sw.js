@@ -1,9 +1,8 @@
-const CACHE_VERSION = 'kijklijst-v5';
+const CACHE_VERSION = 'kijklijst-v6';
 const STATIC_ASSETS = [
     './',
     './index.html',
     './css/style.css',
-    './js/data.js',
     './js/app.js',
     './manifest.json',
     './icons/icon-192.png',
