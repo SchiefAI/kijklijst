@@ -183,8 +183,8 @@ function ratingBlockHtml(key, isWatched) {
     let html = '<div class="rating-wrap">';
     html += starRatingHtml(key, stars);
     if (stars > 0) {
-        html += `<input type="text" class="review-input" data-key="${key}" placeholder="One-liner review..." maxlength="120" value="${escapeAttr(review)}">`;
-        if (review) html += `<div class="review-text">"${escapeHtml(review)}"</div>`;
+        html += `<input type="text" class="review-input" data-key="${key}" placeholder="One-liner review..." maxlength="120" value="${escapeAttr(review)}" style="${review ? 'display:none' : ''}">`;
+        if (review) html += `<div class="review-text" data-key="${key}">"${escapeHtml(review)}"</div>`;
     }
     html += '</div>';
     return html;
@@ -549,20 +549,31 @@ grid.addEventListener('click', e => {
     render();
 });
 
-// Review input handler (delegated)
-grid.addEventListener('change', e => {
+// Review: click text to edit
+grid.addEventListener('click', e => {
+    const reviewText = e.target.closest('.review-text');
+    if (!reviewText) return;
+    const key = reviewText.dataset.key;
+    const input = reviewText.parentElement.querySelector('.review-input');
+    if (!input) return;
+    reviewText.style.display = 'none';
+    input.style.display = '';
+    input.focus();
+});
+// Review: save on blur, show text again
+grid.addEventListener('focusout', e => {
     if (!e.target.classList.contains('review-input')) return;
     const key = e.target.dataset.key;
     if (!key) return;
+    const val = e.target.value.trim();
     if (!ratings[key]) ratings[key] = {};
-    ratings[key].review = e.target.value.trim();
+    ratings[key].review = val;
     saveRatings();
+    render();
 });
 grid.addEventListener('keydown', e => {
     if (!e.target.classList.contains('review-input')) return;
-    if (e.key === 'Enter') {
-        e.target.blur();
-    }
+    if (e.key === 'Enter') e.target.blur();
 });
 
 // ── SPARKLE EFFECT ──
