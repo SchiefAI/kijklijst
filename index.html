@@ -47,7 +47,10 @@
 
 <div class="controls">
     <div class="controls-always">
-        <input type="text" class="search-box" id="searchBox" placeholder="Zoeken...">
+        <div class="search-wrap">
+            <input type="text" class="search-box" id="searchBox" placeholder="Zoeken...">
+            <button class="search-clear" id="searchClear" type="button" aria-label="Zoekveld wissen">✕</button>
+        </div>
         <button class="filter-toggle" id="filterToggle" title="Filters tonen/verbergen">⚙ Filters</button>
     </div>
     <div class="controls-filters" id="controlsFilters">

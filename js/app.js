@@ -647,9 +647,21 @@ function resetFilters() {
 }
 
 let searchTimeout;
+const searchWrap = searchBox.parentElement;
+const searchClear = document.getElementById('searchClear');
+function updateSearchClear() {
+    searchWrap.classList.toggle('has-value', searchBox.value.length > 0);
+}
 searchBox.addEventListener('input', () => {
+    updateSearchClear();
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(render, 250);
+});
+searchClear.addEventListener('click', () => {
+    searchBox.value = '';
+    updateSearchClear();
+    searchBox.focus();
+    render();
 });
 
 // ── HERO POSTER MOSAIC ──

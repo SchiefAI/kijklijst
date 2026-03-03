@@ -235,7 +235,7 @@ body {
 .controls-always {
     display: contents;
 }
-.controls-always .search-box {
+.controls-always .search-wrap {
     order: 10;
 }
 .controls-filters {
@@ -250,9 +250,33 @@ body {
 .filter-toggle {
     display: none;
 }
-.search-box {
+.search-wrap {
+    position: relative;
     flex: 0 1 180px;
     margin-left: auto;
+}
+.search-clear {
+    display: none;
+    position: absolute;
+    right: .5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.12);
+    color: var(--text-dim);
+    font-size: .6rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: background .2s, color .2s;
+}
+.search-clear:hover { background: rgba(255,255,255,.2); color: var(--text); }
+.search-wrap.has-value .search-clear { display: flex; align-items: center; justify-content: center; }
+.search-box {
+    width: 100%;
     padding: .6rem .9rem;
     background: rgba(13,18,32,.45);
     backdrop-filter: blur(10px);
@@ -264,6 +288,7 @@ body {
     outline: none;
     transition: border-color .25s, box-shadow .25s;
 }
+.search-wrap.has-value .search-box { padding-right: 2rem; }
 .search-box:focus {
     border-color: rgba(229,160,13,.4);
     box-shadow: 0 0 0 3px rgba(229,160,13,.08);
@@ -893,9 +918,11 @@ select.sort-select:focus {
         gap: .5rem;
         align-items: center;
     }
-    .controls-always .search-box {
+    .controls-always .search-wrap {
         flex: 1;
         margin-left: 0;
+    }
+    .controls-always .search-box {
         padding: .65rem .9rem;
         font-size: .9rem;
         min-height: 44px;
