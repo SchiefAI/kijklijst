@@ -1622,5 +1622,3 @@ render();
 loadState();
 // Backfill missing IMDb IDs silently in background
 setTimeout(backfillImdbIds, 3000);
-// One-time: refresh all descriptions from TMDB (remove after run)
-setTimeout(refreshAllFromTmdb, 5000);
