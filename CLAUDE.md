@@ -19,7 +19,7 @@ index.html          → Hoofd-HTML, alle overlays/modals
 css/style.css       → Alle styling (één bestand, ~1813 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1575 regels)
+js/app.js           → Alle applicatielogica (~1626 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
 state.json          → User state: watched, ratings, order, tmdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
@@ -90,13 +90,13 @@ border: 1px solid rgba(255,255,255,.08);
 | Dynamic dropdown counts | ~236-277 |
 | Toast notifications (showToast + undo) | ~287-307 |
 | Render (central, incl. empty-state + filter hints) | ~309-464 |
-| Card description expand/collapse (click handler) | ~466-469 |
-| toggleWatch (met confirm + toast + undo) | ~472-500 |
+| Card description expand/collapse (poster + info click) | ~466-481 |
+| toggleWatch (met confirm + toast + undo) | ~484-512 |
 | removeItem (met confirm + toast + undo) | ~501-540 |
 | Star rating interaction | ~542-580 |
 | Sparkle effect (5 sterren) | ~596-610 |
 | Stat pills als filter shortcuts | ~647-660 |
-| resetFilters() | ~664-674 |
+| resetFilters() + h1 click reset | ~677-691 |
 | Hero poster mosaic builder | ~683-707 |
 | Add title modal + TMDB + IMDb fetch | ~728-800 |
 | Random picker | ~810-875 |
@@ -105,8 +105,9 @@ border: 1px solid rgba(255,255,255,.08);
 | Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1229-1428 |
 | Filter badge (updateFilterBadge) | ~1469-1475 |
 | Centralized Escape key handler | ~1483-1484 |
-| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1491-1560 |
-| Init + loadState + backfill trigger | ~1564-1575 |
+| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1505-1580 |
+| refreshAllFromTmdb (one-time TMDB description refresh) | ~1582-1611 |
+| Init + loadState + backfill trigger | ~1613-1626 |
 
 ## Conventies
 
@@ -130,7 +131,8 @@ border: 1px solid rgba(255,255,255,.08);
 - Escape key sluit alle modals/overlays (centralized handler)
 - `render()` bewaart scroll positie via `window.scrollY`
 - `@media (prefers-reduced-motion: reduce)` schakelt alle animaties uit
-- Card-beschrijvingen zijn afgekapt op 3 regels (grid) / 2 regels (list); klik om uit te vouwen
+- Card-beschrijvingen afgekapt op 3 regels (grid, 2 op mobiel) / 2 regels (list, 1 op mobiel); klik poster of tekst om uit te vouwen
+- Klik op "Mijn Kijklijst" h1 reset alle filters + zoekveld
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
 
