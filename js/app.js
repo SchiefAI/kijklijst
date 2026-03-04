@@ -465,8 +465,21 @@ function render() {
 
 // Toggle card description expand/collapse
 grid.addEventListener('click', e => {
+    // Don't toggle if clicking a button, link, input, or star
+    if (e.target.closest('a, button, input, textarea, .star-hit, .review-text')) return;
     const desc = e.target.closest('.card-desc, .list-desc');
-    if (desc) desc.classList.toggle('expanded');
+    if (desc) { desc.classList.toggle('expanded'); return; }
+    // Click on poster or list-info to toggle description
+    const card = e.target.closest('.card');
+    if (!card) return;
+    const clickedPoster = e.target.closest('.poster-wrap');
+    const clickedInfo = e.target.closest('.list-info');
+    if (clickedPoster || clickedInfo) {
+        const listDesc = card.querySelector('.list-desc');
+        const cardDesc = card.querySelector('.card-desc');
+        const target = listDesc || cardDesc;
+        if (target) target.classList.toggle('expanded');
+    }
 });
 
 function toggleWatch(key) {
@@ -670,8 +683,12 @@ function resetFilters() {
     if (allStatusBtn) allStatusBtn.classList.add('active');
     genreFilter.value = 'all';
     langFilter.value = 'all';
+    searchBox.value = '';
+    updateSearchClear();
     render();
 }
+
+document.querySelector('.hero-content h1').addEventListener('click', resetFilters);
 
 let searchTimeout;
 const searchWrap = searchBox.parentElement;
@@ -1561,6 +1578,38 @@ async function backfillImdbIds() {
     }
 }
 
+// ── ONE-TIME: REFRESH ALL DESCRIPTIONS FROM TMDB ──
+async function refreshAllFromTmdb() {
+    if (!tmdbKey) { console.warn('Geen TMDB key'); return; }
+    let updated = 0;
+    const total = DATA.length;
+    for (let i = 0; i < total; i++) {
+        const item = DATA[i];
+        if (!item.t) continue;
+        const results = await searchTmdbTyped(item.t, item.type);
+        const match = bestTmdbMatch(results, item);
+        if (!match) { console.info(`  ✗ ${item.t} — geen match`); continue; }
+        const overview = match.overview || '';
+        if (overview && overview !== item.d) {
+            item.d = overview;
+            updated++;
+        }
+        // Also fill missing IMDb ID while we're at it
+        if (!IMDB[item.t]) {
+            const mediaType = item.type === 'serie' ? 'tv' : 'movie';
+            const imdbId = await fetchImdbId(match.id, mediaType);
+            if (imdbId) IMDB[item.t] = imdbId;
+        }
+        if ((i + 1) % 10 === 0) console.info(`  ${i + 1} / ${total}...`);
+        await new Promise(r => setTimeout(r, 250));
+    }
+    if (updated > 0) {
+        syncToFile();
+        render();
+    }
+    console.info(`Refresh klaar: ${updated} beschrijvingen bijgewerkt`);
+}
+
 // ── INIT ──
 if (viewMode !== 'grid') {
     viewToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
@@ -1573,3 +1622,5 @@ render();
 loadState();
 // Backfill missing IMDb IDs silently in background
 setTimeout(backfillImdbIds, 3000);
+// One-time: refresh all descriptions from TMDB (remove after run)
+setTimeout(refreshAllFromTmdb, 5000);

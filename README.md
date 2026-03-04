@@ -113,8 +113,11 @@ Na installatie opent de app fullscreen zonder adresbalk.
 - **Waar te kijken** — zoekt op JustWatch waar je de titel kunt streamen in Nederland
 
 **Beschrijvingen:**
-- Beschrijvingen zijn afgekapt op 3 regels (grid) of 2 regels (lijst)
-- Klik op de tekst om de volledige beschrijving te zien, klik nogmaals om in te klappen
+- Beschrijvingen zijn afgekapt op 3 regels (grid) of 2 regels (lijst); op mobiel 2 resp. 1 regel
+- Klik op de poster of tekst om de volledige beschrijving te tonen, klik nogmaals om in te klappen
+
+**Titel als reset:**
+- Klik op "Mijn Kijklijst" in de header om alle filters en het zoekveld te resetten
 
 ### Filters & zoeken
 
