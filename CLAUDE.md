@@ -16,12 +16,12 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~1813 regels)
+css/style.css       → Alle styling (één bestand, ~1851 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1626 regels)
+js/app.js           → Alle applicatielogica (~1694 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
-state.json          → User state: watched, ratings, order (NIET in git)
+state.json          → User state: watched, ratings, order, tmdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
 manifest.json       → PWA manifest (standalone, dark theme)
 icons/              → PWA iconen (192px, 512px)
@@ -34,11 +34,11 @@ start.bat           → Windows startscript (port 8420, via server.py)
 
 ### Data flow
 - `data.js` bevat het `DATA` array (ALLE titels) en `IMDB` mapping object — dit is de single source of truth voor titels
-- `state.json` bevat user state (watched, ratings, volgorde) — gedeeld tussen alle apparaten; TMDB key wordt NIET gesynchroniseerd (blijft in localStorage)
+- `state.json` bevat user state (watched, ratings, volgorde, tmdb_key) — gedeeld tussen alle apparaten
 - `server.py` draait als lokale HTTP server (standaard `127.0.0.1`, met `--lan` vlag op `0.0.0.0` voor mobiele toegang) en biedt:
   - `POST /api/save` — schrijft data.js bij (titels toevoegen/verwijderen)
-  - `GET /api/state` — leest state.json; whitelist: watched, ratings, order
-  - `POST /api/state` — schrijft state.json bij; whitelist: watched, ratings, order
+  - `GET /api/state` — leest state.json; whitelist: watched, ratings, order, tmdb_key
+  - `POST /api/state` — schrijft state.json bij; whitelist: watched, ratings, order, tmdb_key
   - `GET /state.json` — geblokkeerd (404) om directe toegang te voorkomen
 - `app.js` laadt DATA bij opstart en synchroniseert wijzigingen automatisch terug naar data.js via `syncToFile()`
 - Bij opstart: `loadState()` haalt state van server; als server leeg is wordt huidige localStorage geseeded naar server
@@ -84,32 +84,40 @@ border: 1px solid rgba(255,255,255,.08);
 | Feature | Locatie in app.js |
 |---------|------------------|
 | syncToFile() (data.js sync) | Regels 1-14 |
-| State vars + save functies + debouncedSyncState/loadState | ~16-84 |
-| Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~86-142 |
-| Star rating HTML helpers + ratingBlockHtml | ~143-192 |
-| View mode (grid/list) | ~193-200 |
-| populateDropdowns() (single-pass) | ~213-234 |
-| Dynamic dropdown counts | ~236-277 |
-| Toast notifications (showToast + undo) | ~287-307 |
-| Render (central, incl. empty-state + filter hints) | ~309-464 |
-| Card description expand/collapse (poster + info click) | ~466-481 |
-| toggleWatch (met confirm + toast + undo) | ~484-512 |
-| removeItem (met confirm + toast + undo) | ~501-540 |
-| Star rating interaction | ~542-580 |
-| Sparkle effect (5 sterren) | ~596-610 |
-| Stat pills als filter shortcuts | ~647-660 |
-| resetFilters() + h1 click reset | ~677-691 |
-| Hero poster mosaic builder | ~683-707 |
-| Add title modal + TMDB + IMDb fetch | ~728-800 |
-| Random picker | ~810-875 |
-| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~936-1060 |
-| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1080-1210 |
-| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1229-1428 |
-| Filter badge (updateFilterBadge) | ~1469-1475 |
-| Centralized Escape key handler | ~1483-1484 |
-| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1505-1580 |
-| refreshAllFromTmdb (one-time TMDB description refresh) | ~1582-1611 |
-| Init + loadState + backfill trigger | ~1613-1626 |
+| State vars + save functies + debouncedSyncState/loadState | ~16-85 |
+| Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~87-155 |
+| Star rating HTML helpers + ratingBlockHtml | ~157-205 |
+| View mode (grid/list) | ~207-214 |
+| DOM refs | ~216-224 |
+| populateDropdowns() (single-pass) | ~226-253 |
+| Dynamic dropdown counts | ~255-296 |
+| Toast notifications (showToast + undo) | ~298-320 |
+| Render (central, incl. empty-state + filter hints) | ~322-480 |
+| Card description expand/collapse (poster + info click) | ~482-499 |
+| toggleWatch (met confirm + toast + undo) | ~501-528 |
+| removeItem (met confirm + toast + undo) | ~530-563 |
+| updateStats | ~565-572 |
+| Star rating interaction | ~574-622 |
+| Sparkle effect (5 sterren) | ~624-641 |
+| Filters (type, status, genre, lang, sort, view toggle) | ~643-670 |
+| Mobile filter toggle | ~672-678 |
+| Stat pills als filter shortcuts | ~680-698 |
+| resetFilters() + resetFiltersKeepSearch() | ~700-726 |
+| h1 click reset | ~728 |
+| Search input + clear button | ~730-747 |
+| Hero poster mosaic builder | ~749-775 |
+| Add title modal + TMDB + IMDb fetch | ~776-864 |
+| Random picker | ~866-991 |
+| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~993-1135 |
+| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1137-1284 |
+| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1286-1539 |
+| Filter badge (updateFilterBadge) | ~1541-1553 |
+| Centralized Escape key handler | ~1555-1562 |
+| Service Worker registratie | ~1564-1567 |
+| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1569-1639 |
+| refreshAllFromTmdb (one-time TMDB description refresh) | ~1641-1672 |
+| Scroll to top | ~1674-1681 |
+| Init + loadState + backfill trigger | ~1683-1694 |
 
 ## Conventies
 
@@ -126,8 +134,8 @@ border: 1px solid rgba(255,255,255,.08);
 - `safeImageUrl()` sanitized poster-URLs (alleen http/https toegestaan)
 - Server bindt standaard op `127.0.0.1`; `--lan` vlag of `KIJKLIJST_LAN=1` env var voor `0.0.0.0`
 - `GET /state.json` geblokkeerd met 404 (alleen via `/api/state` endpoint)
-- Server-side whitelist: alleen `watched`, `ratings`, `order` worden opgeslagen/uitgelezen
-- TMDB API key wordt NIET naar server gesynchroniseerd (blijft in localStorage per device)
+- Server-side whitelist: alleen `watched`, `ratings`, `order`, `tmdb_key` worden opgeslagen/uitgelezen
+- TMDB API key wordt gesynchroniseerd via `state.json` (gedeeld tussen apparaten) en opgeslagen in localStorage
 - TMDB API key in password-veld met show/hide toggle
 - Server error responses bevatten generieke meldingen (geen interne details)
 
@@ -142,21 +150,22 @@ border: 1px solid rgba(255,255,255,.08);
 - Klik op "Mijn Kijklijst" h1 reset alle filters + zoekveld
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
+- Na bulk import worden alleen de net toegevoegde titels getoond; bij elke gebruikersinteractie verdwijnt dit filter
 
 ### IMDb auto-linking
 - `IMDB` object in `data.js` mapt titels → IMDb IDs
 - `fetchImdbId(tmdbId, mediaType)` haalt IMDb ID op via TMDB `/external_ids` endpoint
 - Bij single add via TMDB: IMDb ID wordt op de achtergrond opgehaald en opgeslagen
 - Bij bulk import: IMDb ID per titel opgehaald tijdens lookup
-- `backfillImdbIds()` draait 3s na init; valideert alleen titels zonder IMDB entry
+- `backfillImdbIds()` draait 3s na init; gebruikt opgeslagen `tmdbId` wanneer beschikbaar, valt terug op titel-zoekopdracht
 - `searchTmdbTyped()` zoekt type-specifiek (`/search/movie` of `/search/tv`)
 - `bestTmdbMatch()` matcht op jaar (exact → ±1 → titel-match) om foute matches te voorkomen
 
 ### Data formaat (data.js)
 ```javascript
-{ t: "Titel", y: "2024", type: "film"|"serie", lang: "Engels", d: "Beschrijving", img: "poster-url", g: "Genre1, Genre2" }
+{ t: "Titel", y: "2024", type: "film"|"serie", lang: "Engels", d: "Beschrijving", img: "poster-url", g: "Genre1, Genre2", tmdbId: 12345 }
 ```
-Alle velden behalve `t` en `type` zijn optioneel.
+Alle velden behalve `t` en `type` zijn optioneel. `tmdbId` wordt automatisch opgeslagen bij TMDB-toevoegingen en gebruikt voor efficiëntere IMDb backfill.
 
 ### Genre systeem
 17 vaste genres met emoji-mapping in `GENRE_ICONS`. Nieuwe genres worden automatisch ondersteund maar krijgen 🎬 als fallback-icoon.
@@ -197,6 +206,6 @@ Breakpoints: `@media (max-width: 600px)` en `@media (max-width: 380px)` onderaan
 - **Geen npm/node_modules** — dit is een zero-dependency project
 - **Geen data.js committen** — bevat persoonlijke titels, staat in .gitignore
 - **Geen state.json committen** — bevat persoonlijke state, staat in .gitignore
-- **Geen API keys in code** — TMDB key zit alleen in localStorage (niet in state.json)
+- **Geen API keys in code** — TMDB key zit in `state.json` (server-synced) en localStorage
 - **Geen externe CSS/JS** — behalve Google Fonts CDN
 - **Geen state.json of localStorage wissen** zonder backup — dat is alle gebruikersdata

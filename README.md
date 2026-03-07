@@ -270,7 +270,7 @@ De TMDB (The Movie Database) API is gratis voor persoonlijk gebruik. Zo stel je 
 3. Klik onderaan op **"⚙ TMDB API key instellen"**
 4. Plak je API key en klik "Opslaan"
 
-De key wordt lokaal opgeslagen in je browser (`localStorage`) en wordt niet naar de server gesynchroniseerd.
+De key wordt opgeslagen in je browser (`localStorage`) én gesynchroniseerd naar de server via `state.json`, zodat alle apparaten dezelfde key delen.
 
 > **Let op:** TMDB vereist dat je hun logo toont bij gebruik van hun data. Meer info op [themoviedb.org/about/logos-attribution](https://www.themoviedb.org/about/logos-attribution).
 
@@ -286,7 +286,7 @@ Alle films en series staan in het `DATA` array in `data.js`. Wanneer je een tite
 
 **`state.json` — persoonlijke voorkeuren (gedeeld tussen apparaten)**
 
-Gezien-status, ratings en sorteervolgorde worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
+Gezien-status, ratings, sorteervolgorde en TMDB API key worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
 
 **`localStorage` — fallback en device-specifieke voorkeuren**
 
@@ -296,7 +296,7 @@ Gezien-status, ratings en sorteervolgorde worden via de server opgeslagen in `st
 | `kijklijst_watched` | Fallback gezien-status (als server niet bereikbaar) |
 | `kijklijst_ratings` | Fallback ratings (als server niet bereikbaar) |
 | `kijklijst_order` | Fallback sorteervolgorde (als server niet bereikbaar) |
-| `kijklijst_tmdb_key` | TMDB key (alleen lokaal op dit apparaat) |
+| `kijklijst_tmdb_key` | TMDB key (ook gesynced naar server via `state.json`) |
 
 Bij opstart haalt de app state op van de server. Als de server leeg is (eerste keer), wordt de huidige localStorage geseeded naar de server.
 
@@ -322,7 +322,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 ├── favicon.ico           # Browser-tabblad icoon
 ├── manifest.json         # PWA-configuratie
 ├── server.py             # Lokale Python server (titels + state sync)
-├── state.json            # Persoonlijke state: watched, ratings, order (NIET in git)
+├── state.json            # Persoonlijke state: watched, ratings, order, tmdb_key (NIET in git)
 ├── sw.js                 # Service Worker (offline caching)
 ├── start.sh              # Start-script Linux/macOS (port 8420)
 ├── start.command         # macOS dubbelklik-script (port 8420)
@@ -412,7 +412,7 @@ Open dat adres op je telefoon en je kunt de app ook installeren als PWA via "Zet
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. IMDb IDs worden automatisch opgehaald via TMDB bij de eerstvolgende paginalading (backfill).
 
 **De service worker cachet een oude versie. Hoe forceer ik een update?**
-Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v8` naar `kijklijst-v9`). Bij de volgende paginalading wordt de oude cache verwijderd.
+Verhoog `CACHE_VERSION` in `sw.js` (bijv. van `kijklijst-v13` naar `kijklijst-v14`). Bij de volgende paginalading wordt de oude cache verwijderd.
 
 **Kan ik de app delen met anderen?**
 Ja, clone de repository en volg de instructies bij [Starten](#starten). De ander kopieert `data.example.js` naar `data.js` en begint met een lege lijst. Alle titels die ze toevoegen via de app worden automatisch opgeslagen in hun eigen `data.js`.
