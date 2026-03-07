@@ -1649,16 +1649,17 @@ async function refreshAllFromTmdb() {
         const results = await searchTmdbTyped(item.t, item.type);
         const match = bestTmdbMatch(results, item);
         if (!match) { console.info(`  ✗ ${item.t} — geen match`); continue; }
+        const hadTmdbId = !!item.tmdbId;
         if (!item.tmdbId) item.tmdbId = match.id;
         const overview = match.overview || '';
         if (overview && overview !== item.d) {
             item.d = overview;
             updated++;
         }
-        // Also fill missing IMDb ID while we're at it
-        if (!IMDB[item.t]) {
+        // Re-fetch IMDb ID if missing OR if tmdbId was just set (old ID may be wrong)
+        if (!IMDB[item.t] || !hadTmdbId) {
             const mediaType = item.type === 'serie' ? 'tv' : 'movie';
-            const imdbId = await fetchImdbId(match.id, mediaType);
+            const imdbId = await fetchImdbId(item.tmdbId, mediaType);
             if (imdbId) IMDB[item.t] = imdbId;
         }
         if ((i + 1) % 10 === 0) console.info(`  ${i + 1} / ${total}...`);
