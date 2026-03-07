@@ -54,7 +54,7 @@ async function syncState() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                watched, ratings, order: customOrder
+                watched, ratings, order: customOrder, tmdb_key: tmdbKey
             })
         });
     } catch(e) { console.info('State sync niet beschikbaar:', e.message); }
@@ -65,15 +65,17 @@ async function loadState() {
         const resp = await fetch('/api/state');
         if (!resp.ok) return;
         const s = await resp.json();
-        const hasServerState = s.watched || s.ratings || s.order;
+        const hasServerState = s.watched || s.ratings || s.order || s.tmdb_key;
         if (hasServerState) {
             // Server is source of truth
             if (s.watched) watched = s.watched;
             if (s.ratings) ratings = s.ratings;
             if (s.order) customOrder = s.order;
+            if (s.tmdb_key) tmdbKey = s.tmdb_key;
             localStorage.setItem('kijklijst_watched', JSON.stringify(watched));
             localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings));
             localStorage.setItem('kijklijst_order', JSON.stringify(customOrder));
+            if (tmdbKey) localStorage.setItem('kijklijst_tmdb_key', tmdbKey);
         } else {
             // Server is leeg — seed met huidige localStorage data
             await syncState();
@@ -377,7 +379,7 @@ function render() {
         let emptyHtml = '<div class="empty-state">';
         if (hasFilters && query) {
             emptyHtml += 'Geen resultaten met actieve filters';
-            emptyHtml += '<br><button class="empty-add-btn" onclick="resetFilters()">Filters resetten</button>';
+            emptyHtml += '<br><button class="empty-add-btn" onclick="resetFiltersKeepSearch()">Filters resetten</button>';
         } else if (hasFilters) {
             emptyHtml += 'Geen resultaten met actieve filters';
             emptyHtml += '<br><button class="empty-add-btn" onclick="resetFilters()">Filters resetten</button>';
@@ -707,6 +709,19 @@ function resetFilters() {
     langFilter.value = 'all';
     searchBox.value = '';
     updateSearchClear();
+    render();
+}
+
+function resetFiltersKeepSearch() {
+    clearNewlyAdded();
+    typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    const allTypeBtn = typeFilter.querySelector('[data-type="all"]');
+    if (allTypeBtn) allTypeBtn.classList.add('active');
+    statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    const allStatusBtn = statusFilter.querySelector('[data-status="all"]');
+    if (allStatusBtn) allStatusBtn.classList.add('active');
+    genreFilter.value = 'all';
+    langFilter.value = 'all';
     render();
 }
 

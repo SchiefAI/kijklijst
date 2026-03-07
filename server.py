@@ -80,6 +80,8 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                             data['ratings'] = raw['ratings']
                         if isinstance(raw.get('order'), list):
                             data['order'] = raw['order']
+                        if isinstance(raw.get('tmdb_key'), str) and raw['tmdb_key']:
+                            data['tmdb_key'] = raw['tmdb_key']
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -120,7 +122,7 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                 if not isinstance(body, dict):
                     body = {}
 
-                # Only persist non-secret shared state.
+                # Only persist whitelisted state fields.
                 state = {}
                 if isinstance(body.get('watched'), dict):
                     state['watched'] = body['watched']
@@ -128,6 +130,8 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                     state['ratings'] = body['ratings']
                 if isinstance(body.get('order'), list):
                     state['order'] = body['order']
+                if isinstance(body.get('tmdb_key'), str) and body['tmdb_key']:
+                    state['tmdb_key'] = body['tmdb_key']
 
                 with open(STATE_FILE, 'w', encoding='utf-8') as f:
                     json.dump(state, f, ensure_ascii=False)
