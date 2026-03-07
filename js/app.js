@@ -837,6 +837,7 @@ addSubmit.addEventListener('click', () => {
         img: safeImageUrl(document.getElementById('addImg').value.trim()),
         g: document.getElementById('addGenre').value.trim()
     };
+    if (selectedTmdbItem) newItem.tmdbId = selectedTmdbItem.id;
     DATA.push(newItem);
 
     // Fetch IMDb ID in background if added via TMDB
@@ -1366,7 +1367,8 @@ function buildItemFromTmdb(r) {
         lang: mapTmdbLang(r.original_language),
         d: r.overview || '',
         img: r.poster_path ? `https://image.tmdb.org/t/p/w400${r.poster_path}` : '',
-        g: tmdbGenreNames(r.genre_ids)
+        g: tmdbGenreNames(r.genre_ids),
+        tmdbId: r.id
     };
 }
 
@@ -1614,11 +1616,16 @@ async function backfillImdbIds() {
     if (missing.length === 0) return;
     let updated = 0;
     for (const item of missing) {
-        const results = await searchTmdbTyped(item.t, item.type);
-        const match = bestTmdbMatch(results, item);
-        if (!match) continue;
         const mediaType = item.type === 'serie' ? 'tv' : 'movie';
-        const imdbId = await fetchImdbId(match.id, mediaType);
+        let tmdbId = item.tmdbId;
+        if (!tmdbId) {
+            // Fallback: search by title (less reliable for generic titles)
+            const results = await searchTmdbTyped(item.t, item.type);
+            const match = bestTmdbMatch(results, item);
+            if (!match) continue;
+            tmdbId = match.id;
+        }
+        const imdbId = await fetchImdbId(tmdbId, mediaType);
         if (imdbId) {
             IMDB[item.t] = imdbId;
             updated++;
@@ -1642,6 +1649,7 @@ async function refreshAllFromTmdb() {
         const results = await searchTmdbTyped(item.t, item.type);
         const match = bestTmdbMatch(results, item);
         if (!match) { console.info(`  ✗ ${item.t} — geen match`); continue; }
+        if (!item.tmdbId) item.tmdbId = match.id;
         const overview = match.overview || '';
         if (overview && overview !== item.d) {
             item.d = overview;
