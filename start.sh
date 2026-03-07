@@ -1,6 +1,12 @@
 #!/bin/bash
 PORT=8420
 DIR="$(cd "$(dirname "$0")" && pwd)"
+LAN_FLAG=""
+
+# --lan doorgeven aan server.py voor mobiele toegang
+if [[ "$1" == "--lan" ]]; then
+    LAN_FLAG="--lan"
+fi
 
 # Kill any existing server on this port
 lsof -ti:$PORT 2>/dev/null | xargs kill 2>/dev/null
@@ -14,4 +20,4 @@ echo ""
 
 # Start server
 cd "$DIR"
-python3 server.py $PORT
+python3 server.py $PORT $LAN_FLAG

@@ -68,6 +68,8 @@ python3 server.py 8000
 
 Open daarna `http://localhost:8000` in je browser.
 
+> **Mobiel?** Voeg `--lan` toe (bijv. `python3 server.py --lan` of `./start.sh --lan`) om de app bereikbaar te maken vanaf je telefoon of tablet op hetzelfde wifi-netwerk.
+
 > **Tip:** Je kunt ook gewoon `index.html` openen als bestand, maar dan werken de service worker, TMDB-zoekfunctie, auto-sync en state-synchronisatie niet. Titels worden dan wél getoond, maar wijzigingen worden alleen in localStorage opgeslagen.
 
 ---
@@ -255,7 +257,7 @@ De TMDB (The Movie Database) API is gratis voor persoonlijk gebruik. Zo stel je 
 3. Klik onderaan op **"⚙ TMDB API key instellen"**
 4. Plak je API key en klik "Opslaan"
 
-De key wordt opgeslagen op de server (in `state.json`) en hoef je maar één keer in te voeren.
+De key wordt lokaal opgeslagen in je browser (`localStorage`) en wordt niet naar de server gesynchroniseerd.
 
 > **Let op:** TMDB vereist dat je hun logo toont bij gebruik van hun data. Meer info op [themoviedb.org/about/logos-attribution](https://www.themoviedb.org/about/logos-attribution).
 
@@ -271,7 +273,7 @@ Alle films en series staan in het `DATA` array in `data.js`. Wanneer je een tite
 
 **`state.json` — persoonlijke voorkeuren (gedeeld tussen apparaten)**
 
-Gezien-status, ratings, sorteervolgorde en TMDB key worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
+Gezien-status, ratings en sorteervolgorde worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
 
 **`localStorage` — fallback en device-specifieke voorkeuren**
 
@@ -281,7 +283,7 @@ Gezien-status, ratings, sorteervolgorde en TMDB key worden via de server opgesla
 | `kijklijst_watched` | Fallback gezien-status (als server niet bereikbaar) |
 | `kijklijst_ratings` | Fallback ratings (als server niet bereikbaar) |
 | `kijklijst_order` | Fallback sorteervolgorde (als server niet bereikbaar) |
-| `kijklijst_tmdb_key` | Fallback TMDB key (als server niet bereikbaar) |
+| `kijklijst_tmdb_key` | TMDB key (alleen lokaal op dit apparaat) |
 
 Bij opstart haalt de app state op van de server. Als de server leeg is (eerste keer), wordt de huidige localStorage geseeded naar de server.
 
@@ -307,7 +309,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 ├── favicon.ico           # Browser-tabblad icoon
 ├── manifest.json         # PWA-configuratie
 ├── server.py             # Lokale Python server (titels + state sync)
-├── state.json            # Persoonlijke state: watched, ratings, order, tmdb_key (NIET in git)
+├── state.json            # Persoonlijke state: watched, ratings, order (NIET in git)
 ├── sw.js                 # Service Worker (offline caching)
 ├── start.sh              # Start-script (port 8420)
 ├── start.command          # macOS start-script (port 8420)
@@ -380,7 +382,17 @@ Ja. Alle features werken behalve de auto-complete bij het toevoegen. Je vult dan
 Je titels staan in `js/data.js` en je voorkeuren (gezien-status, ratings, volgorde) in `state.json` — beide worden automatisch bijgewerkt door de server. localStorage dient als fallback wanneer de server niet bereikbaar is. Je kunt je browserdata wissen zonder dataverlies, zolang de server draait.
 
 **Kan ik de app op mijn telefoon gebruiken?**
-Ja. Start de server op je computer en open `http://<je-lokale-ip>:8420` op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je lokale IP vind je via `ipconfig getifaddr en0` (macOS) of `hostname -I` (Linux) — het is iets als `192.168.x.x`, niet je publieke IP. Je kunt de app ook installeren als PWA via je mobiele browser.
+Ja. Start de server met de `--lan` vlag zodat andere apparaten op je netwerk erbij kunnen:
+
+```bash
+./start.sh --lan
+# of handmatig:
+python3 server.py --lan
+```
+
+De server toont je lokale IP-adres in de terminal (bijv. `http://192.168.x.x:8420`). Open dat adres op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je kunt de app ook installeren als PWA via je mobiele browser.
+
+Zonder `--lan` luistert de server alleen op `127.0.0.1` (localhost) en is niet bereikbaar vanaf andere apparaten.
 
 **Hoe voeg ik meer films toe aan de standaard-database?**
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. IMDb IDs worden automatisch opgehaald via TMDB bij de eerstvolgende paginalading (backfill).
