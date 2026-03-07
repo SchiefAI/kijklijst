@@ -21,7 +21,7 @@ js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
 js/app.js           → Alle applicatielogica (~1626 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
-state.json          → User state: watched, ratings, order, tmdb_key (NIET in git)
+state.json          → User state: watched, ratings, order (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
 manifest.json       → PWA manifest (standalone, dark theme)
 icons/              → PWA iconen (192px, 512px)
@@ -33,11 +33,12 @@ start.command       → macOS dubbelklik-startscript (port 8420, via server.py)
 
 ### Data flow
 - `data.js` bevat het `DATA` array (ALLE titels) en `IMDB` mapping object — dit is de single source of truth voor titels
-- `state.json` bevat user state (watched, ratings, volgorde, TMDB key) — gedeeld tussen alle apparaten
-- `server.py` draait als lokale HTTP server en biedt:
+- `state.json` bevat user state (watched, ratings, volgorde) — gedeeld tussen alle apparaten; TMDB key wordt NIET gesynchroniseerd (blijft in localStorage)
+- `server.py` draait als lokale HTTP server (standaard `127.0.0.1`, met `--lan` vlag op `0.0.0.0` voor mobiele toegang) en biedt:
   - `POST /api/save` — schrijft data.js bij (titels toevoegen/verwijderen)
-  - `GET /api/state` — leest state.json (of `{}` als niet bestaat)
-  - `POST /api/state` — schrijft state.json bij (watched, ratings, order, tmdb_key)
+  - `GET /api/state` — leest state.json; whitelist: watched, ratings, order
+  - `POST /api/state` — schrijft state.json bij; whitelist: watched, ratings, order
+  - `GET /state.json` — geblokkeerd (404) om directe toegang te voorkomen
 - `app.js` laadt DATA bij opstart en synchroniseert wijzigingen automatisch terug naar data.js via `syncToFile()`
 - Bij opstart: `loadState()` haalt state van server; als server leeg is wordt huidige localStorage geseeded naar server
 - Bij elke state-wijziging: `debouncedSyncState()` (300ms debounce) POST de volledige state naar de server
@@ -121,8 +122,13 @@ border: 1px solid rgba(255,255,255,.08);
 ### Security
 - `escapeHtml()` gebruiken voor alle user/API-data die in innerHTML terechtkomt
 - `escapeAttr()` voor data in HTML-attributen
-- Server error responses bevatten generieke meldingen (geen interne details)
+- `safeImageUrl()` sanitized poster-URLs (alleen http/https toegestaan)
+- Server bindt standaard op `127.0.0.1`; `--lan` vlag of `KIJKLIJST_LAN=1` env var voor `0.0.0.0`
+- `GET /state.json` geblokkeerd met 404 (alleen via `/api/state` endpoint)
+- Server-side whitelist: alleen `watched`, `ratings`, `order` worden opgeslagen/uitgelezen
+- TMDB API key wordt NIET naar server gesynchroniseerd (blijft in localStorage per device)
 - TMDB API key in password-veld met show/hide toggle
+- Server error responses bevatten generieke meldingen (geen interne details)
 
 ### UX patronen
 - `showToast(message, undoFn)` voor feedback bij acties; met optionele undo-callback (5s timeout)
@@ -190,6 +196,6 @@ Breakpoints: `@media (max-width: 600px)` en `@media (max-width: 380px)` onderaan
 - **Geen npm/node_modules** — dit is een zero-dependency project
 - **Geen data.js committen** — bevat persoonlijke titels, staat in .gitignore
 - **Geen state.json committen** — bevat persoonlijke state, staat in .gitignore
-- **Geen API keys in code** — TMDB key zit in state.json/localStorage
+- **Geen API keys in code** — TMDB key zit alleen in localStorage (niet in state.json)
 - **Geen externe CSS/JS** — behalve Google Fonts CDN
 - **Geen state.json of localStorage wissen** zonder backup — dat is alle gebruikersdata

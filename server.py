@@ -4,12 +4,13 @@ Mijn Kijklijst — Lokale server
 Serveert static files + biedt een POST endpoint om data.js bij te werken.
 """
 
+import argparse
 import http.server
 import json
 import os
+import socket
 import sys
 
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8420
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, 'js', 'data.js')
 STATE_FILE = os.path.join(BASE_DIR, 'state.json')
@@ -61,11 +62,24 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=BASE_DIR, **kwargs)
 
     def do_GET(self):
+        if self.path == '/state.json':
+            self.send_response(404)
+            self.end_headers()
+            return
+
         if self.path == '/api/state':
             data = {}
             if os.path.exists(STATE_FILE):
                 with open(STATE_FILE, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
+                    raw = json.load(f)
+                    # Only expose expected state fields.
+                    if isinstance(raw, dict):
+                        if isinstance(raw.get('watched'), dict):
+                            data['watched'] = raw['watched']
+                        if isinstance(raw.get('ratings'), dict):
+                            data['ratings'] = raw['ratings']
+                        if isinstance(raw.get('order'), list):
+                            data['order'] = raw['order']
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -103,8 +117,20 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
 
+                if not isinstance(body, dict):
+                    body = {}
+
+                # Only persist non-secret shared state.
+                state = {}
+                if isinstance(body.get('watched'), dict):
+                    state['watched'] = body['watched']
+                if isinstance(body.get('ratings'), dict):
+                    state['ratings'] = body['ratings']
+                if isinstance(body.get('order'), list):
+                    state['order'] = body['order']
+
                 with open(STATE_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(body, f, ensure_ascii=False)
+                    json.dump(state, f, ensure_ascii=False)
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -127,9 +153,38 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
             super().log_message(format, *args)
 
 
+def get_local_ip():
+    """Probeer het lokale LAN-adres te achterhalen."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return None
+
+
 if __name__ == '__main__':
-    server = http.server.HTTPServer(('', PORT), KijklijstHandler)
-    print(f'🎬 Kijklijst server draait op http://localhost:{PORT}')
+    parser = argparse.ArgumentParser(description='Mijn Kijklijst server')
+    parser.add_argument('port', nargs='?', type=int, default=8420,
+                        help='Poortnummer (standaard: 8420)')
+    parser.add_argument('--lan', action='store_true',
+                        help='Luister op alle interfaces (0.0.0.0) zodat andere apparaten op je netwerk de app kunnen gebruiken')
+    args = parser.parse_args()
+
+    # Env var als alternatief voor --lan
+    lan_mode = args.lan or os.environ.get('KIJKLIJST_LAN', '').lower() in ('1', 'true', 'yes')
+    host = '0.0.0.0' if lan_mode else '127.0.0.1'
+
+    server = http.server.HTTPServer((host, args.port), KijklijstHandler)
+    print(f'🎬 Kijklijst server draait op http://127.0.0.1:{args.port}')
+    if lan_mode:
+        local_ip = get_local_ip()
+        if local_ip:
+            print(f'📱 LAN-modus: ook bereikbaar op http://{local_ip}:{args.port}')
+        else:
+            print(f'📱 LAN-modus: bereikbaar op 0.0.0.0:{args.port}')
     print(f'   Data sync: js/data.js')
     print(f'   State sync: state.json')
     print(f'   Stop met Ctrl+C')

@@ -53,7 +53,7 @@ async function syncState() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                watched, ratings, order: customOrder, tmdb_key: tmdbKey
+                watched, ratings, order: customOrder
             })
         });
     } catch(e) { console.info('State sync niet beschikbaar:', e.message); }
@@ -64,17 +64,15 @@ async function loadState() {
         const resp = await fetch('/api/state');
         if (!resp.ok) return;
         const s = await resp.json();
-        const hasServerState = s.watched || s.ratings || s.order || s.tmdb_key;
+        const hasServerState = s.watched || s.ratings || s.order;
         if (hasServerState) {
             // Server is source of truth
             if (s.watched) watched = s.watched;
             if (s.ratings) ratings = s.ratings;
             if (s.order) customOrder = s.order;
-            if (s.tmdb_key) tmdbKey = s.tmdb_key;
             localStorage.setItem('kijklijst_watched', JSON.stringify(watched));
             localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings));
             localStorage.setItem('kijklijst_order', JSON.stringify(customOrder));
-            if (tmdbKey) localStorage.setItem('kijklijst_tmdb_key', tmdbKey);
         } else {
             // Server is leeg — seed met huidige localStorage data
             await syncState();
@@ -133,6 +131,19 @@ function subtitle(item) {
 
 function escapeAttr(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function safeImageUrl(raw) {
+    if (!raw || typeof raw !== 'string') return '';
+    const value = raw.trim();
+    if (!value) return '';
+    try {
+        const parsed = new URL(value, window.location.origin);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+        return escapeAttr(parsed.href);
+    } catch {
+        return '';
+    }
 }
 
 function escapeHtml(str) {
@@ -388,7 +399,8 @@ function render() {
     grid.innerHTML = items.map(item => {
         const key = getKey(item);
         const isWatched = !!watched[key];
-        const hasImg = !!item.img;
+        const imgSrc = safeImageUrl(item.img);
+        const hasImg = !!imgSrc;
         const isList = viewMode === 'list';
         const r = ratings[key] || {};
         const dragAttr = isDragMode ? ' draggable="true"' : '';
@@ -411,7 +423,7 @@ function render() {
             <div class="card ${isWatched ? 'is-watched' : ''}" data-key="${key}"${dragAttr}>
                 <div class="poster-wrap">
                     <div class="poster-gradient" style="background:${hashColor(item.t)}">${initials(item.t)}</div>
-                    ${hasImg ? `<img class="poster-img" src="${item.img}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
+                    ${hasImg ? `<img class="poster-img" src="${imgSrc}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
                     <span class="type-badge ${item.type}">${item.type === 'serie' ? 'Serie' : 'Film'}</span>
                     ${isWatched ? '<span class="watched-check">✓</span>' : ''}
                 </div>
@@ -437,7 +449,7 @@ function render() {
         <div class="card ${isWatched ? 'is-watched' : ''}" data-key="${key}"${dragAttr}>
             <div class="poster-wrap">
                 <div class="poster-gradient" style="background:${hashColor(item.t)}">${initials(item.t)}</div>
-                ${hasImg ? `<img class="poster-img" src="${item.img}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
+                ${hasImg ? `<img class="poster-img" src="${imgSrc}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
                 <span class="type-badge ${item.type}">${item.type === 'serie' ? 'Serie' : 'Film'}</span>
                 ${isWatched ? '<span class="watched-check">✓</span>' : ''}
             </div>
@@ -796,7 +808,7 @@ addSubmit.addEventListener('click', () => {
         type: type,
         lang: document.getElementById('addLang').value.trim(),
         d: document.getElementById('addDesc').value.trim(),
-        img: document.getElementById('addImg').value.trim(),
+        img: safeImageUrl(document.getElementById('addImg').value.trim()),
         g: document.getElementById('addGenre').value.trim()
     };
     DATA.push(newItem);
@@ -882,8 +894,9 @@ function spinPicker() {
 
     // Populate slot
     pickerSlot.innerHTML = slotItems.map((item, i) => {
-        if (item.img) {
-            return `<img src="${item.img}" alt="${item.t}" class="${i === 0 ? 'active' : ''}">`;
+        const imgSrc = safeImageUrl(item.img);
+        if (imgSrc) {
+            return `<img src="${imgSrc}" alt="${escapeHtml(item.t)}" class="${i === 0 ? 'active' : ''}">`;
         }
         return `<div class="picker-gradient ${i === 0 ? 'active' : ''}" style="background:${hashColor(item.t)}">${initials(item.t)}</div>`;
     }).join('');
@@ -1397,8 +1410,9 @@ function renderImportReview() {
         const checked = isFound ? 'checked' : '';
         const title = isFound ? escapeHtml(r.item.t) : escapeHtml(r.query);
         const meta = isFound ? `${r.item.y} · ${r.item.type === 'serie' ? 'Serie' : 'Film'}` : '';
-        const poster = isFound && r.item.img
-            ? `<img class="import-row-poster" src="${r.item.img.replace('/w400', '/w92')}" alt="">`
+        const reviewImgSrc = isFound ? safeImageUrl(r.item.img) : '';
+        const poster = reviewImgSrc
+            ? `<img class="import-row-poster" src="${reviewImgSrc.replace('/w400', '/w92')}" alt="">`
             : `<div class="import-row-poster" style="background:rgba(255,255,255,.05)"></div>`;
         const status = isDup
             ? '<span class="import-row-status duplicate">Al in je lijst</span>'

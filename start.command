@@ -3,12 +3,19 @@
 cd "$(dirname "$0")"
 
 PORT=8420
+LAN_FLAG=""
+
+# --lan doorgeven aan server.py voor mobiele toegang
+if [[ "$1" == "--lan" ]]; then
+    LAN_FLAG="--lan"
+fi
+
 # Check of de poort al bezet is
 if lsof -i :$PORT &>/dev/null; then
     echo "Server draait al op poort $PORT"
 else
     echo "Server starten op poort $PORT..."
-    python3 server.py $PORT &
+    python3 server.py $PORT $LAN_FLAG &
     sleep 1
 fi
 
