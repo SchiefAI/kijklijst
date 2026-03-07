@@ -1485,7 +1485,18 @@ function confirmImport() {
     if (added > 0) {
         syncToFile();
         populateDropdowns();
-        resetFilters();
+        // Reset filters without clearing newlyAdded
+        typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        const allTypeBtn = typeFilter.querySelector('[data-type="all"]');
+        if (allTypeBtn) allTypeBtn.classList.add('active');
+        statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        const allStatusBtn = statusFilter.querySelector('[data-status="all"]');
+        if (allStatusBtn) allStatusBtn.classList.add('active');
+        genreFilter.value = 'all';
+        langFilter.value = 'all';
+        searchBox.value = '';
+        updateSearchClear();
+        render();
         showToast(`${added} titel${added === 1 ? '' : 's'} toegevoegd`);
     }
     closeImport();
