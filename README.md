@@ -57,7 +57,9 @@ Dit start een server op **port 8420** en opent automatisch je browser.
 
 ### Optie 2: macOS dubbelklik
 
-Dubbelklik op `start.command` in Finder. Dit start de server op **port 8420** en opent Chrome.
+Dubbelklik op `start.command` in Finder. Dit start de server op **port 8420** en opent Chrome. In de terminal verschijnt het adres voor mobiel gebruik (bijv. `http://192.168.x.x:8420`).
+
+> **Eigen icoon instellen:** Rechtermuisklik op `start.command` → **Toon info** (⌘I) → klik op het icoon linksboven → plak een afbeelding met ⌘V. Gebruik bijv. `icons/icon-512.png` uit het project (open in Preview → ⌘A → ⌘C) voor hetzelfde icoon als de PWA.
 
 ### Optie 3: Windows
 
@@ -394,17 +396,17 @@ Ja. Alle features werken behalve de auto-complete bij het toevoegen. Je vult dan
 Je titels staan in `js/data.js` en je voorkeuren (gezien-status, ratings, volgorde) in `state.json` — beide worden automatisch bijgewerkt door de server. localStorage dient als fallback wanneer de server niet bereikbaar is. Je kunt je browserdata wissen zonder dataverlies, zolang de server draait.
 
 **Kan ik de app op mijn telefoon gebruiken?**
-Ja. Start de server met de `--lan` vlag zodat andere apparaten op je netwerk erbij kunnen:
+Ja. Dubbelklik op `start.command` (macOS) — LAN-modus is standaard ingeschakeld. In de terminal verschijnt het adres voor je telefoon, bijv.:
 
-```bash
-./start.sh --lan
-# of handmatig:
-python3 server.py --lan
+```
+📱 Op je telefoon of tablet:
+   Open http://192.168.1.42:8420
+   (zelfde wifi-netwerk)
 ```
 
-De server toont je lokale IP-adres in de terminal (bijv. `http://192.168.x.x:8420`). Open dat adres op je telefoon (zorg dat beide op hetzelfde wifi-netwerk zitten). Je kunt de app ook installeren als PWA via je mobiele browser.
+Open dat adres op je telefoon en je kunt de app ook installeren als PWA via "Zet op beginscherm" in Safari.
 
-Zonder `--lan` luistert de server alleen op `127.0.0.1` (localhost) en is niet bereikbaar vanaf andere apparaten.
+> **Handmatig starten?** Gebruik `python3 server.py --lan` of `./start.sh --lan` om LAN-modus in te schakelen. Zonder `--lan` luistert de server alleen op localhost.
 
 **Hoe voeg ik meer films toe aan de standaard-database?**
 Bewerk `js/data.js` en voeg items toe aan het `DATA`-array. Volg het bestaande formaat. IMDb IDs worden automatisch opgehaald via TMDB bij de eerstvolgende paginalading (backfill).

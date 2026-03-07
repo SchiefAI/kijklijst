@@ -16,12 +16,19 @@ fi
 # Open in Chrome
 open "http://localhost:$PORT"
 
+LOCAL_IP=$(python3 -c "import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()" 2>/dev/null)
+
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Mijn Kijklijst draait op localhost:$PORT"
-echo "  Klik ⊕ in de adresbalk om als app te installeren"
-echo "  Druk Ctrl+C om te stoppen"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  🎬 Mijn Kijklijst draait op localhost:$PORT"
+echo ""
+echo "  📱 Op je telefoon of tablet:"
+echo "     Open http://${LOCAL_IP:-<je-ip>}:$PORT"
+echo "     (zelfde wifi-netwerk)"
+echo ""
+echo "  💡 Klik ⊕ in de adresbalk om als app te installeren"
+echo "  ⏹  Druk Ctrl+C om te stoppen"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 wait
