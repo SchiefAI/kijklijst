@@ -25,8 +25,9 @@ state.json          → User state: watched, ratings, order (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
 manifest.json       → PWA manifest (standalone, dark theme)
 icons/              → PWA iconen (192px, 512px)
-start.sh            → Startscript (port 8420, via server.py)
+start.sh            → Startscript Linux/macOS (port 8420, via server.py)
 start.command       → macOS dubbelklik-startscript (port 8420, via server.py)
+start.bat           → Windows startscript (port 8420, via server.py)
 ```
 
 ## Architectuur

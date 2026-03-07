@@ -59,7 +59,18 @@ Dit start een server op **port 8420** en opent automatisch je browser.
 
 Dubbelklik op `start.command` in Finder. Dit start de server op **port 8420** en opent Chrome.
 
-### Optie 3: Handmatig
+### Optie 3: Windows
+
+Dubbelklik op `start.bat`, of open een terminal:
+
+```cmd
+cd pad\naar\kijklijst
+python server.py
+```
+
+> **Let op:** Op Windows heet het commando vaak `python` in plaats van `python3`.
+
+### Optie 4: Handmatig (macOS/Linux)
 
 ```bash
 cd /pad/naar/films
@@ -311,8 +322,9 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 ├── server.py             # Lokale Python server (titels + state sync)
 ├── state.json            # Persoonlijke state: watched, ratings, order (NIET in git)
 ├── sw.js                 # Service Worker (offline caching)
-├── start.sh              # Start-script (port 8420)
-├── start.command          # macOS start-script (port 8420)
+├── start.sh              # Start-script Linux/macOS (port 8420)
+├── start.command         # macOS dubbelklik-script (port 8420)
+├── start.bat             # Windows start-script (port 8420)
 ├── .gitignore            # Houdt data.js, state.json en .DS_Store uit git
 ├── CLAUDE.md             # Development guide (voor AI-assistenten)
 └── README.md             # Dit bestand
