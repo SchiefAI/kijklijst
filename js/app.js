@@ -21,6 +21,7 @@ let ratings = {};
 try { ratings = JSON.parse(localStorage.getItem('kijklijst_ratings') || '{}'); } catch(e) { console.error('Parse ratings:', e); }
 
 let customOrder = [];
+let newlyAdded = new Set();
 try { customOrder = JSON.parse(localStorage.getItem('kijklijst_order') || '[]'); } catch(e) { console.error('Parse order:', e); }
 
 let tmdbKey = '';
@@ -328,6 +329,7 @@ function render() {
     const sortVal = sortSelect.value;
 
     let items = DATA.filter(item => {
+        if (newlyAdded.size > 0 && !newlyAdded.has(getKey(item))) return false;
         if (query && !item.t.toLowerCase().includes(query)) return false;
         if (typeVal !== 'all' && item.type !== typeVal) return false;
         if (genreVal !== 'all' && (!item.g || !item.g.split(', ').includes(genreVal))) return false;
@@ -637,14 +639,18 @@ function spawnSparkles(card) {
 }
 
 // ── FILTERS ──
+function clearNewlyAdded() { newlyAdded.clear(); }
+
 typeFilter.addEventListener('click', e => {
     if (e.target.tagName !== 'BUTTON') return;
+    clearNewlyAdded();
     typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     e.target.classList.add('active');
     render();
 });
 statusFilter.addEventListener('click', e => {
     if (e.target.tagName !== 'BUTTON') return;
+    clearNewlyAdded();
     statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     e.target.classList.add('active');
     render();
@@ -657,9 +663,9 @@ viewToggle.addEventListener('click', e => {
     saveViewMode();
     render();
 });
-genreFilter.addEventListener('change', render);
-langFilter.addEventListener('change', render);
-sortSelect.addEventListener('change', render);
+genreFilter.addEventListener('change', () => { clearNewlyAdded(); render(); });
+langFilter.addEventListener('change', () => { clearNewlyAdded(); render(); });
+sortSelect.addEventListener('change', () => { clearNewlyAdded(); render(); });
 
 // Mobile filter toggle
 const filterToggle = document.getElementById('filterToggle');
@@ -671,22 +677,26 @@ filterToggle.addEventListener('click', () => {
 
 // Stat pills as filter shortcuts
 document.getElementById('statFilm').addEventListener('click', () => {
+    clearNewlyAdded();
     typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     const filmBtn = typeFilter.querySelector('[data-type="film"]');
     if (filmBtn) { filmBtn.classList.add('active'); render(); }
 });
 document.getElementById('statSerie').addEventListener('click', () => {
+    clearNewlyAdded();
     typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     const serieBtn = typeFilter.querySelector('[data-type="serie"]');
     if (serieBtn) { serieBtn.classList.add('active'); render(); }
 });
 document.getElementById('statWatched').addEventListener('click', () => {
+    clearNewlyAdded();
     statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     const watchedBtn = statusFilter.querySelector('[data-status="watched"]');
     if (watchedBtn) { watchedBtn.classList.add('active'); render(); }
 });
 
 function resetFilters() {
+    clearNewlyAdded();
     typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
     const allTypeBtn = typeFilter.querySelector('[data-type="all"]');
     if (allTypeBtn) allTypeBtn.classList.add('active');
@@ -709,6 +719,7 @@ function updateSearchClear() {
     searchWrap.classList.toggle('has-value', searchBox.value.length > 0);
 }
 searchBox.addEventListener('input', () => {
+    clearNewlyAdded();
     updateSearchClear();
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(render, 250);
@@ -1444,6 +1455,7 @@ function updateImportSummary() {
 function confirmImport() {
     const checks = importReviewList.querySelectorAll('input[type="checkbox"]');
     let added = 0;
+    newlyAdded.clear();
     checks.forEach(cb => {
         if (!cb.checked) return;
         const idx = parseInt(cb.dataset.idx);
@@ -1451,13 +1463,14 @@ function confirmImport() {
         if (r && r.item) {
             DATA.push(r.item);
             if (r.imdbId) IMDB[r.item.t] = r.imdbId;
+            newlyAdded.add(getKey(r.item));
             added++;
         }
     });
     if (added > 0) {
         syncToFile();
         populateDropdowns();
-        render();
+        resetFilters();
         showToast(`${added} titel${added === 1 ? '' : 's'} toegevoegd`);
     }
     closeImport();
