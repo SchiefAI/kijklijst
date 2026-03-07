@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'kijklijst-v10';
+const CACHE_VERSION = 'kijklijst-v11';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -72,6 +72,12 @@ self.addEventListener('fetch', event => {
                 })
                 .catch(() => caches.match(event.request))
         );
+        return;
+    }
+
+    // data.js changes on every add/remove — always fetch from server
+    if (url.pathname.endsWith('/data.js')) {
+        event.respondWith(fetch(event.request));
         return;
     }
 
