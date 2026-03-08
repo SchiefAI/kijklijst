@@ -428,7 +428,7 @@ function render() {
 
         const imdbId = IMDB[item.t];
         const rtScore = imdbId ? rtScores[imdbId] : null;
-        const rtHtml = rtScore ? `<span class="rt-score">${escapeHtml(rtScore)}</span>` : '';
+        const rtHtml = rtScore ? `<span class="rt-score" title="Rotten Tomatoes">&#x1F345; ${escapeHtml(rtScore)}</span>` : '';
 
         const ratingHtml = isList
             ? (r.stars ? starDisplayHtml(r.stars) : '')
