@@ -82,6 +82,8 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                             data['order'] = raw['order']
                         if isinstance(raw.get('tmdb_key'), str) and raw['tmdb_key']:
                             data['tmdb_key'] = raw['tmdb_key']
+                        if isinstance(raw.get('omdb_key'), str) and raw['omdb_key']:
+                            data['omdb_key'] = raw['omdb_key']
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -132,6 +134,8 @@ class KijklijstHandler(http.server.SimpleHTTPRequestHandler):
                     state['order'] = body['order']
                 if isinstance(body.get('tmdb_key'), str) and body['tmdb_key']:
                     state['tmdb_key'] = body['tmdb_key']
+                if isinstance(body.get('omdb_key'), str) and body['omdb_key']:
+                    state['omdb_key'] = body['omdb_key']
 
                 with open(STATE_FILE, 'w', encoding='utf-8') as f:
                     json.dump(state, f, ensure_ascii=False)

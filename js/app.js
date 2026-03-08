@@ -27,6 +27,12 @@ try { customOrder = JSON.parse(localStorage.getItem('kijklijst_order') || '[]');
 let tmdbKey = '';
 try { tmdbKey = localStorage.getItem('kijklijst_tmdb_key') || ''; } catch(e) { console.error('Read tmdb_key:', e); }
 
+let omdbKey = '';
+try { omdbKey = localStorage.getItem('kijklijst_omdb_key') || ''; } catch(e) { console.error('Read omdb_key:', e); }
+
+let rtScores = {};
+try { rtScores = JSON.parse(localStorage.getItem('kijklijst_rt_scores') || '{}'); } catch(e) { console.error('Parse rt_scores:', e); }
+
 function saveWatched() {
     try { localStorage.setItem('kijklijst_watched', JSON.stringify(watched)); } catch(e) { console.error('Save watched:', e); }
     debouncedSyncState();
@@ -54,7 +60,7 @@ async function syncState() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                watched, ratings, order: customOrder, tmdb_key: tmdbKey
+                watched, ratings, order: customOrder, tmdb_key: tmdbKey, omdb_key: omdbKey
             })
         });
     } catch(e) { console.info('State sync niet beschikbaar:', e.message); }
@@ -65,17 +71,19 @@ async function loadState() {
         const resp = await fetch('/api/state');
         if (!resp.ok) return;
         const s = await resp.json();
-        const hasServerState = s.watched || s.ratings || s.order || s.tmdb_key;
+        const hasServerState = s.watched || s.ratings || s.order || s.tmdb_key || s.omdb_key;
         if (hasServerState) {
             // Server is source of truth
             if (s.watched) watched = s.watched;
             if (s.ratings) ratings = s.ratings;
             if (s.order) customOrder = s.order;
             if (s.tmdb_key) tmdbKey = s.tmdb_key;
+            if (s.omdb_key) omdbKey = s.omdb_key;
             localStorage.setItem('kijklijst_watched', JSON.stringify(watched));
             localStorage.setItem('kijklijst_ratings', JSON.stringify(ratings));
             localStorage.setItem('kijklijst_order', JSON.stringify(customOrder));
             if (tmdbKey) localStorage.setItem('kijklijst_tmdb_key', tmdbKey);
+            if (omdbKey) localStorage.setItem('kijklijst_omdb_key', omdbKey);
         } else {
             // Server is leeg — seed met huidige localStorage data
             await syncState();
@@ -418,6 +426,10 @@ function render() {
             ${isWatched ? '✓ Gezien' : '○ Markeer als gezien'}
         </button>`;
 
+        const imdbId = IMDB[item.t];
+        const rtScore = imdbId ? rtScores[imdbId] : null;
+        const rtHtml = rtScore ? `<span class="rt-score">${escapeHtml(rtScore)}</span>` : '';
+
         const ratingHtml = isList
             ? (r.stars ? starDisplayHtml(r.stars) : '')
             : ratingBlockHtml(key, isWatched);
@@ -437,7 +449,7 @@ function render() {
                             <div class="card-title">${escapeHtml(item.t)}</div>
                             ${genreBadges(item.g)}
                         </div>
-                        <div class="card-subtitle">${subtitle(item)}</div>
+                        <div class="card-subtitle">${subtitle(item)}${rtHtml ? ` · ${rtHtml}` : ''}</div>
                         ${item.d ? `<div class="list-desc">${escapeHtml(item.d)}</div>` : ''}
                         ${ratingHtml}
                     </div>
@@ -459,7 +471,7 @@ function render() {
             </div>
             <div class="card-body">
                 <div class="card-title">${escapeHtml(item.t)}</div>
-                ${item.y ? `<div class="card-year">${escapeHtml(item.y)}</div>` : ''}
+                ${item.y || rtHtml ? `<div class="card-year">${item.y ? escapeHtml(item.y) : ''}${rtHtml ? `${item.y ? ' · ' : ''}${rtHtml}` : ''}</div>` : ''}
                 ${genreBadges(item.g)}
                 ${item.d ? `<div class="card-desc">${escapeHtml(item.d)}</div>` : ''}
                 ${linksHtml}
@@ -1169,23 +1181,48 @@ keyToggle.addEventListener('click', () => {
     const isVisible = keyToggle.classList.toggle('visible');
     tmdbKeyInput.type = isVisible ? 'text' : 'password';
 });
-tmdbSettingsBtn.addEventListener('click', () => {
+const omdbKeyInput = document.getElementById('omdbKeyInput');
+const omdbKeyToggle = document.getElementById('omdbKeyToggle');
+omdbKeyToggle.addEventListener('click', () => {
+    const isVisible = omdbKeyToggle.classList.toggle('visible');
+    omdbKeyInput.type = isVisible ? 'text' : 'password';
+});
+function openSettings() {
     tmdbOverlay.classList.add('visible');
     tmdbKeyInput.value = tmdbKey;
+    omdbKeyInput.value = omdbKey;
     tmdbKeyInput.type = 'password';
+    omdbKeyInput.type = 'password';
     keyToggle.classList.remove('visible');
+    omdbKeyToggle.classList.remove('visible');
     setTimeout(() => tmdbKeyInput.focus(), 200);
-});
+}
+const settingsDot = document.getElementById('settingsDot');
+function updateSettingsDot() {
+    settingsDot.classList.toggle('visible', !tmdbKey);
+}
+updateSettingsDot();
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+tmdbSettingsBtn.addEventListener('click', openSettings);
 tmdbOverlay.addEventListener('click', e => {
     if (e.target === tmdbOverlay) tmdbOverlay.classList.remove('visible');
 });
 tmdbKeySave.addEventListener('click', () => {
     tmdbKey = tmdbKeyInput.value.trim();
     try { localStorage.setItem('kijklijst_tmdb_key', tmdbKey); } catch(e) {}
+    const newOmdbKey = omdbKeyInput.value.trim();
+    const omdbChanged = newOmdbKey !== omdbKey;
+    omdbKey = newOmdbKey;
+    try { localStorage.setItem('kijklijst_omdb_key', omdbKey); } catch(e) {}
     syncState();
     tmdbOverlay.classList.remove('visible');
+    updateSettingsDot();
+    if (omdbChanged && omdbKey) backfillRtScores();
 });
 tmdbKeyInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') tmdbKeySave.click();
+});
+omdbKeyInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') tmdbKeySave.click();
 });
 
@@ -1308,11 +1345,7 @@ function showImportStep(step) {
 
 function openImport() {
     if (!tmdbKey) {
-        tmdbOverlay.classList.add('visible');
-        tmdbKeyInput.value = tmdbKey;
-        tmdbKeyInput.type = 'password';
-        keyToggle.classList.remove('visible');
-        setTimeout(() => tmdbKeyInput.focus(), 200);
+        openSettings();
         showToast('Stel eerst een TMDB API key in');
         return;
     }
@@ -1531,11 +1564,7 @@ document.getElementById('importSelectNone').addEventListener('click', () => {
 importOverlay.addEventListener('click', e => { if (e.target === importOverlay) closeImport(); });
 document.getElementById('importFromAddBtn').addEventListener('click', () => { closeAdd(); openImport(); });
 document.getElementById('importTmdbBtn').addEventListener('click', () => {
-    tmdbOverlay.classList.add('visible');
-    tmdbKeyInput.value = tmdbKey;
-    tmdbKeyInput.type = 'password';
-    keyToggle.classList.remove('visible');
-    setTimeout(() => tmdbKeyInput.focus(), 200);
+    openSettings();
 });
 
 // ── FILTER BADGE ──
@@ -1635,6 +1664,51 @@ async function backfillImdbIds() {
     if (updated > 0) {
         syncToFile();
         console.info(`Backfill: ${updated} IMDb IDs toegevoegd`);
+    }
+}
+
+// ── ROTTEN TOMATOES SCORES VIA OMDB ──
+function saveRtScores() {
+    try { localStorage.setItem('kijklijst_rt_scores', JSON.stringify(rtScores)); } catch(e) {}
+}
+
+async function fetchRtScore(imdbId) {
+    if (!omdbKey || !imdbId) return null;
+    try {
+        const url = `https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&apikey=${encodeURIComponent(omdbKey)}`;
+        const resp = await fetch(url);
+        if (resp.status === 401) return null;
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (data.Response === 'False') return null;
+        const rt = (data.Ratings || []).find(r => r.Source === 'Rotten Tomatoes');
+        return rt ? rt.Value : null;
+    } catch {
+        return null;
+    }
+}
+
+async function backfillRtScores() {
+    if (!omdbKey) return;
+    const missing = DATA.filter(item => {
+        const imdbId = IMDB[item.t];
+        return imdbId && !rtScores[imdbId];
+    });
+    if (missing.length === 0) return;
+    let updated = 0;
+    for (const item of missing) {
+        const imdbId = IMDB[item.t];
+        const score = await fetchRtScore(imdbId);
+        if (score) {
+            rtScores[imdbId] = score;
+            updated++;
+        }
+        await new Promise(r => setTimeout(r, 250));
+    }
+    if (updated > 0) {
+        saveRtScores();
+        render();
+        console.info(`RT backfill: ${updated} scores opgehaald`);
     }
 }
 
