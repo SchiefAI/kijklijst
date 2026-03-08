@@ -16,12 +16,12 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~1851 regels)
+css/style.css       → Alle styling (één bestand, ~1900 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1694 regels)
+js/app.js           → Alle applicatielogica (~1769 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
-state.json          → User state: watched, ratings, order, tmdb_key (NIET in git)
+state.json          → User state: watched, ratings, order, tmdb_key, omdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
 manifest.json       → PWA manifest (standalone, dark theme)
 icons/              → PWA iconen (192px, 512px)
@@ -34,11 +34,11 @@ start.bat           → Windows startscript (port 8420, via server.py)
 
 ### Data flow
 - `data.js` bevat het `DATA` array (ALLE titels) en `IMDB` mapping object — dit is de single source of truth voor titels
-- `state.json` bevat user state (watched, ratings, volgorde, tmdb_key) — gedeeld tussen alle apparaten
+- `state.json` bevat user state (watched, ratings, volgorde, tmdb_key, omdb_key) — gedeeld tussen alle apparaten
 - `server.py` draait als lokale HTTP server (standaard `127.0.0.1`, met `--lan` vlag op `0.0.0.0` voor mobiele toegang) en biedt:
   - `POST /api/save` — schrijft data.js bij (titels toevoegen/verwijderen)
-  - `GET /api/state` — leest state.json; whitelist: watched, ratings, order, tmdb_key
-  - `POST /api/state` — schrijft state.json bij; whitelist: watched, ratings, order, tmdb_key
+  - `GET /api/state` — leest state.json; whitelist: watched, ratings, order, tmdb_key, omdb_key
+  - `POST /api/state` — schrijft state.json bij; whitelist: watched, ratings, order, tmdb_key, omdb_key
   - `GET /state.json` — geblokkeerd (404) om directe toegang te voorkomen
 - `app.js` laadt DATA bij opstart en synchroniseert wijzigingen automatisch terug naar data.js via `syncToFile()`
 - Bij opstart: `loadState()` haalt state van server; als server leeg is wordt huidige localStorage geseeded naar server
@@ -115,9 +115,11 @@ border: 1px solid rgba(255,255,255,.08);
 | Centralized Escape key handler | ~1555-1562 |
 | Service Worker registratie | ~1564-1567 |
 | IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1569-1639 |
-| refreshAllFromTmdb (one-time TMDB description refresh) | ~1641-1672 |
-| Scroll to top | ~1674-1681 |
-| Init + loadState + backfill trigger | ~1683-1694 |
+| Settings gear button + openSettings() | ~1150-1227 |
+| RT scores via OMDB (fetchRtScore, backfillRtScores) | ~1670-1713 |
+| refreshAllFromTmdb (one-time TMDB description refresh) | ~1715-1747 |
+| Scroll to top | ~1749-1756 |
+| Init + loadState + backfill trigger | ~1758-1769 |
 
 ## Conventies
 
@@ -134,9 +136,10 @@ border: 1px solid rgba(255,255,255,.08);
 - `safeImageUrl()` sanitized poster-URLs (alleen http/https toegestaan)
 - Server bindt standaard op `127.0.0.1`; `--lan` vlag of `KIJKLIJST_LAN=1` env var voor `0.0.0.0`
 - `GET /state.json` geblokkeerd met 404 (alleen via `/api/state` endpoint)
-- Server-side whitelist: alleen `watched`, `ratings`, `order`, `tmdb_key` worden opgeslagen/uitgelezen
+- Server-side whitelist: alleen `watched`, `ratings`, `order`, `tmdb_key`, `omdb_key` worden opgeslagen/uitgelezen
 - TMDB API key wordt gesynchroniseerd via `state.json` (gedeeld tussen apparaten) en opgeslagen in localStorage
-- TMDB API key in password-veld met show/hide toggle
+- OMDB API key wordt gesynchroniseerd via `state.json` (gedeeld tussen apparaten) en opgeslagen in localStorage
+- TMDB en OMDB API keys in password-velden met show/hide toggle
 - Server error responses bevatten generieke meldingen (geen interne details)
 
 ### UX patronen
@@ -151,6 +154,7 @@ border: 1px solid rgba(255,255,255,.08);
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
 - Na bulk import worden alleen de net toegevoegde titels getoond; bij elke gebruikersinteractie verdwijnt dit filter
+- RT scores (🍅) getoond op cards wanneer OMDB key geconfigureerd; scores gecached in localStorage (`kijklijst_rt_scores`)
 
 ### IMDb auto-linking
 - `IMDB` object in `data.js` mapt titels → IMDb IDs
@@ -160,6 +164,13 @@ border: 1px solid rgba(255,255,255,.08);
 - `backfillImdbIds()` draait 3s na init; gebruikt opgeslagen `tmdbId` wanneer beschikbaar, valt terug op titel-zoekopdracht
 - `searchTmdbTyped()` zoekt type-specifiek (`/search/movie` of `/search/tv`)
 - `bestTmdbMatch()` matcht op jaar (exact → ±1 → titel-match) om foute matches te voorkomen
+
+### Rotten Tomatoes scores (OMDB)
+- RT scores opgehaald via OMDB API (`omdbapi.com`) op basis van IMDb ID
+- `fetchRtScore(imdbId)` haalt de RT score op uit het `Ratings` array van OMDB response
+- `backfillRtScores()` draait bij opslaan van OMDB key; haalt scores op voor alle titels met IMDb ID maar zonder RT score
+- Scores gecached in localStorage (`kijklijst_rt_scores`) als `{ imdbId: "85%" }` object
+- OMDB key gesynchroniseerd via `state.json` (net als TMDB key)
 
 ### Data formaat (data.js)
 ```javascript
@@ -176,7 +187,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → verander `'kijklijst-v8'` naar `'kijklijst-v9'` etc.
+- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v16'`
 - `data.js` staat **niet** in STATIC_ASSETS (verandert bij elke add/remove)
 - Cache strategieën:
   - Static assets (excl. data.js) → cache-first
@@ -184,6 +195,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
   - Poster images (media-amazon.com, tmdb.org) → network-first met cache fallback
   - `/api/*` endpoints → altijd netwerk (nooit gecached)
   - TMDB API calls → altijd netwerk
+  - OMDB API calls → altijd netwerk
 
 ## Veelvoorkomende taken
 
@@ -206,6 +218,6 @@ Breakpoints: `@media (max-width: 600px)` en `@media (max-width: 380px)` onderaan
 - **Geen npm/node_modules** — dit is een zero-dependency project
 - **Geen data.js committen** — bevat persoonlijke titels, staat in .gitignore
 - **Geen state.json committen** — bevat persoonlijke state, staat in .gitignore
-- **Geen API keys in code** — TMDB key zit in `state.json` (server-synced) en localStorage
+- **Geen API keys in code** — TMDB en OMDB keys zitten in `state.json` (server-synced) en localStorage
 - **Geen externe CSS/JS** — behalve Google Fonts CDN
 - **Geen state.json of localStorage wissen** zonder backup — dat is alle gebruikersdata

@@ -23,6 +23,7 @@ Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Geen acco
   - [TMDB auto-complete](#tmdb-auto-complete)
   - [Bulk import](#bulk-import)
 - [TMDB API key instellen](#tmdb-api-key-instellen)
+- [OMDB API key instellen](#omdb-api-key-instellen)
 - [Dataopslag](#dataopslag)
 - [Projectstructuur](#projectstructuur)
 - [Technische details](#technische-details)
@@ -266,13 +267,35 @@ De TMDB (The Movie Database) API is gratis voor persoonlijk gebruik. Zo stel je 
 ### Stap 3: Key invoeren in de app
 
 1. Open de kijklijst-app
-2. Klik op de **+** knop in de header
-3. Klik onderaan op **"⚙ TMDB API key instellen"**
-4. Plak je API key en klik "Opslaan"
+2. Klik op het **⚙** tandwiel-icoon in de header
+3. Plak je API key in het TMDB-veld en klik "Opslaan"
 
 De key wordt opgeslagen in je browser (`localStorage`) én gesynchroniseerd naar de server via `state.json`, zodat alle apparaten dezelfde key delen.
 
 > **Let op:** TMDB vereist dat je hun logo toont bij gebruik van hun data. Meer info op [themoviedb.org/about/logos-attribution](https://www.themoviedb.org/about/logos-attribution).
+
+---
+
+## OMDB API key instellen
+
+Met een (gratis) OMDB API key toont de app **Rotten Tomatoes scores** (🍅) op je cards.
+
+### Stap 1: Key aanvragen
+
+1. Ga naar [omdbapi.com/apikey.aspx](https://www.omdbapi.com/apikey.aspx)
+2. Kies het **Free** plan (1.000 requests per dag)
+3. Vul je e-mailadres in en klik "Submit"
+4. Bevestig je e-mailadres — je ontvangt je API key per mail
+
+### Stap 2: Key invoeren in de app
+
+1. Open de kijklijst-app
+2. Klik op het **⚙** tandwiel-icoon in de header
+3. Plak je OMDB API key in het tweede veld en klik "Opslaan"
+
+Na het opslaan worden RT scores automatisch opgehaald voor alle titels met een IMDb ID. Scores worden gecached in je browser — ze worden niet opnieuw opgehaald tenzij je de OMDB key opnieuw opslaat.
+
+**Zonder OMDB key** werkt alles gewoon — er worden dan alleen geen RT scores getoond.
 
 ---
 
@@ -286,7 +309,7 @@ Alle films en series staan in het `DATA` array in `data.js`. Wanneer je een tite
 
 **`state.json` — persoonlijke voorkeuren (gedeeld tussen apparaten)**
 
-Gezien-status, ratings, sorteervolgorde en TMDB API key worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
+Gezien-status, ratings, sorteervolgorde, TMDB API key en OMDB API key worden via de server opgeslagen in `state.json`. Dit bestand wordt automatisch aangemaakt en bijgewerkt. Doordat alle apparaten dezelfde server gebruiken, delen ze dezelfde state.
 
 **`localStorage` — fallback en device-specifieke voorkeuren**
 
@@ -297,6 +320,8 @@ Gezien-status, ratings, sorteervolgorde en TMDB API key worden via de server opg
 | `kijklijst_ratings` | Fallback ratings (als server niet bereikbaar) |
 | `kijklijst_order` | Fallback sorteervolgorde (als server niet bereikbaar) |
 | `kijklijst_tmdb_key` | TMDB key (ook gesynced naar server via `state.json`) |
+| `kijklijst_omdb_key` | OMDB key (ook gesynced naar server via `state.json`) |
+| `kijklijst_rt_scores` | Gecachte Rotten Tomatoes scores per IMDb ID |
 
 Bij opstart haalt de app state op van de server. Als de server leeg is (eerste keer), wordt de huidige localStorage geseeded naar de server.
 
@@ -322,7 +347,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 ├── favicon.ico           # Browser-tabblad icoon
 ├── manifest.json         # PWA-configuratie
 ├── server.py             # Lokale Python server (titels + state sync)
-├── state.json            # Persoonlijke state: watched, ratings, order, tmdb_key (NIET in git)
+├── state.json            # Persoonlijke state: watched, ratings, order, tmdb_key, omdb_key (NIET in git)
 ├── sw.js                 # Service Worker (offline caching)
 ├── start.sh              # Start-script Linux/macOS (port 8420)
 ├── start.command         # macOS dubbelklik-script (port 8420)
@@ -344,7 +369,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 | Styling | Vanilla CSS (custom properties, grid, flexbox, keyframe-animaties) |
 | Logica | Vanilla JavaScript (geen frameworks of libraries) |
 | Fonts | Google Fonts (Inter, Monoton) |
-| API | TMDB API v3 (optioneel, voor auto-complete) |
+| API | TMDB API v3 (optioneel, auto-complete) + OMDB API (optioneel, Rotten Tomatoes scores) |
 | Server | Python 3 custom server (`server.py`) met sync naar `data.js` en `state.json` |
 
 **Nul dependencies.** Geen npm, geen build-stap, geen node_modules.
@@ -358,6 +383,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 | Poster-afbeeldingen (Amazon/TMDB) | Network-first, fallback naar cache |
 | `/api/*` endpoints | Altijd netwerk (nooit gecached) |
 | TMDB API-calls | Altijd netwerk (nooit gecached) |
+| OMDB API-calls | Altijd netwerk (nooit gecached) |
 
 Na de eerste keer laden werkt de app volledig offline (behalve TMDB-zoeken en nieuwe poster-afbeeldingen).
 
