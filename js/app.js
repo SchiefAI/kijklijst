@@ -1199,7 +1199,7 @@ function openSettings() {
 }
 const settingsDot = document.getElementById('settingsDot');
 function updateSettingsDot() {
-    settingsDot.classList.toggle('visible', !tmdbKey || !omdbKey);
+    settingsDot.classList.toggle('visible', !tmdbKey);
 }
 updateSettingsDot();
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
@@ -1767,5 +1767,3 @@ render();
 loadState();
 // Backfill missing IMDb IDs silently in background
 setTimeout(backfillImdbIds, 3000);
-// Backfill RT scores after IMDb IDs are available
-setTimeout(backfillRtScores, 5000);
