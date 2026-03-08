@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'kijklijst-v14';
+const CACHE_VERSION = 'kijklijst-v15';
 const STATIC_ASSETS = [
     './',
     './index.html',
@@ -57,6 +57,12 @@ self.addEventListener('fetch', event => {
 
     // TMDB API calls: always network, no cache
     if (url.hostname.includes('api.themoviedb.org')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
+    // OMDB API calls: always network, no cache
+    if (url.hostname.includes('omdbapi.com')) {
         event.respondWith(fetch(event.request));
         return;
     }

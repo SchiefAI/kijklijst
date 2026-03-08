@@ -491,6 +491,10 @@ select.sort-select:focus {
     font-size: .73rem;
     color: var(--text-dim);
     margin-top: .2rem;
+}
+.rt-score {
+    color: #fa320a;
+    font-weight: 600;
     letter-spacing: .06em;
     font-variant-numeric: tabular-nums;
     opacity: .7;
@@ -794,6 +798,36 @@ select.sort-select:focus {
     background: rgba(229,160,13,.15);
     color: #fff;
 }
+.pill--settings {
+    position: relative;
+    cursor: pointer;
+    color: var(--text-dim);
+    border-color: rgba(255,255,255,.1);
+    padding: .4rem .55rem .3rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .25s;
+}
+.pill--settings:hover {
+    color: var(--text);
+    border-color: rgba(255,255,255,.2);
+    transform: translateY(-1px);
+}
+.pill--settings svg { display: block; }
+.settings-dot {
+    display: none;
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(229,160,13,.5);
+}
+.settings-dot.visible { display: block; }
 /* ── OVERLAY ── */
 .overlay {
     position: fixed;
@@ -1514,6 +1548,21 @@ select.sort-select:focus {
     text-decoration: none;
 }
 .modal-hint a:hover { text-decoration: underline; }
+.key-label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: .35rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.key-label-sub {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: .7;
+}
 .key-field-wrap {
     position: relative;
 }
