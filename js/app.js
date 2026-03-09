@@ -362,6 +362,24 @@ function render() {
                 const rb = (ratings[getKey(b)] || {}).stars || 0;
                 return rb - ra || a.t.localeCompare(b.t, 'nl');
             }
+            case 'imdb-desc': case 'imdb-asc': {
+                const getImdb = item => { const s = IMDB[item.t] && rtScores[IMDB[item.t]]; return s && typeof s === 'object' && s.imdb ? parseFloat(s.imdb) : 0; };
+                const dir = sortVal === 'imdb-desc' ? -1 : 1;
+                const sa = getImdb(a), sb = getImdb(b);
+                if (!sa && !sb) return a.t.localeCompare(b.t, 'nl');
+                if (!sa) return 1;
+                if (!sb) return -1;
+                return dir * (sa - sb) || a.t.localeCompare(b.t, 'nl');
+            }
+            case 'rt-desc': case 'rt-asc': {
+                const getRt = item => { const s = IMDB[item.t] && rtScores[IMDB[item.t]]; const v = s ? (typeof s === 'string' ? s : s.rt) : null; return v ? parseInt(v) : 0; };
+                const dir = sortVal === 'rt-desc' ? -1 : 1;
+                const sa = getRt(a), sb = getRt(b);
+                if (!sa && !sb) return a.t.localeCompare(b.t, 'nl');
+                if (!sa) return 1;
+                if (!sb) return -1;
+                return dir * (sa - sb) || a.t.localeCompare(b.t, 'nl');
+            }
             case 'custom': {
                 const ia = customOrder.indexOf(getKey(a));
                 const ib = customOrder.indexOf(getKey(b));
@@ -427,8 +445,13 @@ function render() {
         </button>`;
 
         const imdbId = IMDB[item.t];
-        const rtScore = imdbId ? rtScores[imdbId] : null;
-        const rtHtml = rtScore ? `<span class="rt-score" title="Rotten Tomatoes">&#x1F345; ${escapeHtml(rtScore)}</span>` : '';
+        const scoreData = imdbId ? rtScores[imdbId] : null;
+        // Support both old format (string) and new format (object with rt/imdb)
+        const rtVal = scoreData ? (typeof scoreData === 'string' ? scoreData : scoreData.rt) : null;
+        const imdbVal = scoreData && typeof scoreData === 'object' ? scoreData.imdb : null;
+        const imdbScoreHtml = imdbVal ? `<span class="imdb-score" title="IMDb"><span class="imdb-badge">IMDb</span> ${escapeHtml(imdbVal)}</span>` : '';
+        const rtHtml = rtVal ? `<span class="rt-score" title="Rotten Tomatoes">&#x1F345; ${escapeHtml(rtVal)}</span>` : '';
+        const scoresHtml = (imdbScoreHtml || rtHtml) ? [imdbScoreHtml, rtHtml].filter(Boolean).join(' ') : '';
 
         const ratingHtml = isList
             ? (r.stars ? starDisplayHtml(r.stars) : '')
@@ -449,7 +472,7 @@ function render() {
                             <div class="card-title">${escapeHtml(item.t)}</div>
                             ${genreBadges(item.g)}
                         </div>
-                        <div class="card-subtitle">${subtitle(item)}${rtHtml ? ` · ${rtHtml}` : ''}</div>
+                        <div class="card-subtitle">${subtitle(item)}${scoresHtml ? ` · ${scoresHtml}` : ''}</div>
                         ${item.d ? `<div class="list-desc">${escapeHtml(item.d)}</div>` : ''}
                         ${ratingHtml}
                     </div>
@@ -471,7 +494,7 @@ function render() {
             </div>
             <div class="card-body">
                 <div class="card-title">${escapeHtml(item.t)}</div>
-                ${item.y || rtHtml ? `<div class="card-year">${item.y ? escapeHtml(item.y) : ''}${rtHtml ? `${item.y ? ' · ' : ''}${rtHtml}` : ''}</div>` : ''}
+                ${item.y || scoresHtml ? `<div class="card-year">${item.y ? escapeHtml(item.y) : ''}${scoresHtml ? `${item.y ? ' · ' : ''}${scoresHtml}` : ''}</div>` : ''}
                 ${genreBadges(item.g)}
                 ${item.d ? `<div class="card-desc">${escapeHtml(item.d)}</div>` : ''}
                 ${linksHtml}
@@ -1667,7 +1690,7 @@ async function backfillImdbIds() {
     }
 }
 
-// ── ROTTEN TOMATOES SCORES VIA OMDB ──
+// ── RT + IMDb SCORES VIA OMDB ──
 function saveRtScores() {
     try { localStorage.setItem('kijklijst_rt_scores', JSON.stringify(rtScores)); } catch(e) {}
 }
@@ -1682,7 +1705,10 @@ async function fetchRtScore(imdbId) {
         const data = await resp.json();
         if (data.Response === 'False') return null;
         const rt = (data.Ratings || []).find(r => r.Source === 'Rotten Tomatoes');
-        return rt ? rt.Value : null;
+        const result = {};
+        if (rt) result.rt = rt.Value;
+        if (data.imdbRating && data.imdbRating !== 'N/A') result.imdb = data.imdbRating;
+        return Object.keys(result).length > 0 ? result : null;
     } catch {
         return null;
     }
@@ -1692,7 +1718,9 @@ async function backfillRtScores() {
     if (!omdbKey) return;
     const missing = DATA.filter(item => {
         const imdbId = IMDB[item.t];
-        return imdbId && !rtScores[imdbId];
+        if (!imdbId) return false;
+        // Fetch if missing, or if stored in old string format (upgrade to object)
+        return !rtScores[imdbId] || typeof rtScores[imdbId] === 'string';
     });
     if (missing.length === 0) return;
     let updated = 0;
@@ -1767,3 +1795,5 @@ render();
 loadState();
 // Backfill missing IMDb IDs silently in background
 setTimeout(backfillImdbIds, 3000);
+// Backfill RT+IMDb scores (runs after loadState so omdbKey is available)
+setTimeout(backfillRtScores, 5000);

@@ -16,10 +16,10 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~1900 regels)
+css/style.css       → Alle styling (één bestand, ~1918 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1769 regels)
+js/app.js           → Alle applicatielogica (~1799 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
 state.json          → User state: watched, ratings, order, tmdb_key, omdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
@@ -84,42 +84,42 @@ border: 1px solid rgba(255,255,255,.08);
 | Feature | Locatie in app.js |
 |---------|------------------|
 | syncToFile() (data.js sync) | Regels 1-14 |
-| State vars + save functies + debouncedSyncState/loadState | ~16-85 |
-| Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~87-155 |
-| Star rating HTML helpers + ratingBlockHtml | ~157-205 |
-| View mode (grid/list) | ~207-214 |
-| DOM refs | ~216-224 |
-| populateDropdowns() (single-pass) | ~226-253 |
-| Dynamic dropdown counts | ~255-296 |
-| Toast notifications (showToast + undo) | ~298-320 |
-| Render (central, incl. empty-state + filter hints) | ~322-480 |
-| Card description expand/collapse (poster + info click) | ~482-499 |
-| toggleWatch (met confirm + toast + undo) | ~501-528 |
-| removeItem (met confirm + toast + undo) | ~530-563 |
-| updateStats | ~565-572 |
-| Star rating interaction | ~574-622 |
-| Sparkle effect (5 sterren) | ~624-641 |
-| Filters (type, status, genre, lang, sort, view toggle) | ~643-670 |
-| Mobile filter toggle | ~672-678 |
-| Stat pills als filter shortcuts | ~680-698 |
-| resetFilters() + resetFiltersKeepSearch() | ~700-726 |
-| h1 click reset | ~728 |
-| Search input + clear button | ~730-747 |
-| Hero poster mosaic builder | ~749-775 |
-| Add title modal + TMDB + IMDb fetch | ~776-864 |
-| Random picker | ~866-991 |
-| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~993-1135 |
-| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1137-1284 |
-| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1286-1539 |
-| Filter badge (updateFilterBadge) | ~1541-1553 |
-| Centralized Escape key handler | ~1555-1562 |
-| Service Worker registratie | ~1564-1567 |
-| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1569-1639 |
-| Settings gear button + openSettings() | ~1150-1227 |
-| RT scores via OMDB (fetchRtScore, backfillRtScores) | ~1670-1713 |
-| refreshAllFromTmdb (one-time TMDB description refresh) | ~1715-1747 |
-| Scroll to top | ~1749-1756 |
-| Init + loadState + backfill trigger | ~1758-1769 |
+| State vars + save functies + debouncedSyncState/loadState | ~16-93 |
+| Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~95-163 |
+| Star rating HTML helpers + ratingBlockHtml | ~165-213 |
+| View mode (grid/list) | ~215-222 |
+| DOM refs | ~224-232 |
+| populateDropdowns() (single-pass) | ~234-261 |
+| Dynamic dropdown counts | ~263-304 |
+| Toast notifications (showToast + undo) | ~306-328 |
+| Render (central, incl. empty-state + filter hints + scores) | ~330-534 |
+| Card description expand/collapse (poster + info click) | ~536-563 |
+| toggleWatch (met confirm + toast + undo) | ~536-563 |
+| removeItem (met confirm + toast + undo) | ~565-598 |
+| updateStats | ~600-607 |
+| Star rating interaction | ~609-657 |
+| Sparkle effect (5 sterren) | ~659-676 |
+| Filters (type, status, genre, lang, sort, view toggle) | ~678-706 |
+| Mobile filter toggle | ~708-733 |
+| Stat pills als filter shortcuts | ~735-765 |
+| resetFilters() + resetFiltersKeepSearch() | ~735-765 |
+| h1 click reset | ~765 |
+| Search input + clear button | ~766-782 |
+| Hero poster mosaic builder | ~784-810 |
+| Add title modal + TMDB + IMDb fetch | ~811-900 |
+| Random picker | ~901-1026 |
+| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~1028-1170 |
+| Settings gear button + openSettings() | ~1172-1264 |
+| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1266-1344 |
+| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1346-1591 |
+| Filter badge (updateFilterBadge) | ~1593-1605 |
+| Centralized Escape key handler | ~1607-1619 |
+| Service Worker registratie | ~1616-1619 |
+| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1621-1692 |
+| RT + IMDb scores via OMDB (fetchRtScore, backfillRtScores) | ~1693-1741 |
+| refreshAllFromTmdb (one-time TMDB description refresh) | ~1743-1775 |
+| Scroll to top | ~1777-1785 |
+| Init + loadState + backfill trigger | ~1786-1799 |
 
 ## Conventies
 
@@ -154,7 +154,7 @@ border: 1px solid rgba(255,255,255,.08);
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
 - Na bulk import worden alleen de net toegevoegde titels getoond; bij elke gebruikersinteractie verdwijnt dit filter
-- RT scores (🍅) getoond op cards wanneer OMDB key geconfigureerd; scores gecached in localStorage (`kijklijst_rt_scores`)
+- IMDb rating (gele badge) en RT score (🍅) getoond op cards wanneer OMDB key geconfigureerd; scores gecached in localStorage (`kijklijst_rt_scores`)
 
 ### IMDb auto-linking
 - `IMDB` object in `data.js` mapt titels → IMDb IDs
@@ -165,11 +165,13 @@ border: 1px solid rgba(255,255,255,.08);
 - `searchTmdbTyped()` zoekt type-specifiek (`/search/movie` of `/search/tv`)
 - `bestTmdbMatch()` matcht op jaar (exact → ±1 → titel-match) om foute matches te voorkomen
 
-### Rotten Tomatoes scores (OMDB)
-- RT scores opgehaald via OMDB API (`omdbapi.com`) op basis van IMDb ID
-- `fetchRtScore(imdbId)` haalt de RT score op uit het `Ratings` array van OMDB response
-- `backfillRtScores()` draait bij opslaan van OMDB key; haalt scores op voor alle titels met IMDb ID maar zonder RT score
-- Scores gecached in localStorage (`kijklijst_rt_scores`) als `{ imdbId: "85%" }` object
+### Scores via OMDB (RT + IMDb)
+- Scores opgehaald via OMDB API (`omdbapi.com`) op basis van IMDb ID
+- `fetchRtScore(imdbId)` retourneert een object `{ rt: "85%", imdb: "7.4" }` (beide optioneel)
+- IMDb rating getoond op cards als gele "IMDb" badge (naast RT score); RT score in lichtgrijs (`var(--text-dim)`)
+- `backfillRtScores()` draait automatisch 5s na init + bij opslaan van OMDB key; haalt scores op voor titels zonder score of met oud string-formaat
+- Scores gecached in localStorage (`kijklijst_rt_scores`) als `{ imdbId: { rt: "85%", imdb: "7.4" } }` object; oude string-waarden worden automatisch ge-upgrade
+- Sorteeropties: IMDb (hoog→laag / laag→hoog) en Rotten Tomatoes (hoog→laag / laag→hoog)
 - OMDB key gesynchroniseerd via `state.json` (net als TMDB key)
 
 ### Data formaat (data.js)
@@ -187,7 +189,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v16'`
+- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v19'`
 - `data.js` staat **niet** in STATIC_ASSETS (verandert bij elke add/remove)
 - Cache strategieën:
   - Static assets (excl. data.js) → cache-first
