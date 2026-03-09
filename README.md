@@ -160,7 +160,11 @@ De genre- en taaldropdowns tonen dynamisch hoeveel resultaten er per optie zijn,
 | **Jaar (nieuw → oud)** | Nieuwste eerst |
 | **Jaar (oud → nieuw)** | Oudste eerst |
 | **Mijn volgorde** | Handmatige volgorde via drag-and-drop |
-| **Rating (hoog → laag)** | Hoogst gewaardeerde eerst |
+| **Rating (hoog → laag)** | Hoogst gewaardeerde eerst (persoonlijke sterren) |
+| **IMDb (hoog → laag)** | Hoogste IMDb-score eerst |
+| **IMDb (laag → hoog)** | Laagste IMDb-score eerst |
+| **Rotten Tomatoes (hoog → laag)** | Hoogste RT-score eerst |
+| **Rotten Tomatoes (laag → hoog)** | Laagste RT-score eerst |
 
 ### Weergave
 
@@ -278,7 +282,7 @@ De key wordt opgeslagen in je browser (`localStorage`) én gesynchroniseerd naar
 
 ## OMDB API key instellen
 
-Met een (gratis) OMDB API key toont de app **Rotten Tomatoes scores** (🍅) op je cards.
+Met een (gratis) OMDB API key toont de app **IMDb ratings** en **Rotten Tomatoes scores** (🍅) op je cards.
 
 ### Stap 1: Key aanvragen
 
@@ -293,9 +297,11 @@ Met een (gratis) OMDB API key toont de app **Rotten Tomatoes scores** (🍅) op 
 2. Klik op het **⚙** tandwiel-icoon in de header
 3. Plak je OMDB API key in het tweede veld en klik "Opslaan"
 
-Na het opslaan worden RT scores automatisch opgehaald voor alle titels met een IMDb ID. Scores worden gecached in je browser — ze worden niet opnieuw opgehaald tenzij je de OMDB key opnieuw opslaat.
+Na het opslaan worden IMDb ratings en RT scores automatisch opgehaald voor alle titels met een IMDb ID. Scores worden ook automatisch opgehaald bij het opstarten van de app (5 seconden na init). Scores worden gecached in je browser.
 
-**Zonder OMDB key** werkt alles gewoon — er worden dan alleen geen RT scores getoond.
+De IMDb rating wordt getoond als een gele "IMDb" badge op de card, de RT score als 🍅 percentage. Je kunt ook sorteren op IMDb-score of RT-score via het sorteer-dropdown.
+
+**Zonder OMDB key** werkt alles gewoon — er worden dan alleen geen IMDb/RT scores getoond.
 
 ---
 
@@ -321,7 +327,7 @@ Gezien-status, ratings, sorteervolgorde, TMDB API key en OMDB API key worden via
 | `kijklijst_order` | Fallback sorteervolgorde (als server niet bereikbaar) |
 | `kijklijst_tmdb_key` | TMDB key (ook gesynced naar server via `state.json`) |
 | `kijklijst_omdb_key` | OMDB key (ook gesynced naar server via `state.json`) |
-| `kijklijst_rt_scores` | Gecachte Rotten Tomatoes scores per IMDb ID |
+| `kijklijst_rt_scores` | Gecachte IMDb ratings + Rotten Tomatoes scores per IMDb ID |
 
 Bij opstart haalt de app state op van de server. Als de server leeg is (eerste keer), wordt de huidige localStorage geseeded naar de server.
 
@@ -369,7 +375,7 @@ Je titels staan in `data.js` en je voorkeuren in `state.json` — kopieer beide 
 | Styling | Vanilla CSS (custom properties, grid, flexbox, keyframe-animaties) |
 | Logica | Vanilla JavaScript (geen frameworks of libraries) |
 | Fonts | Google Fonts (Inter, Monoton) |
-| API | TMDB API v3 (optioneel, auto-complete) + OMDB API (optioneel, Rotten Tomatoes scores) |
+| API | TMDB API v3 (optioneel, auto-complete) + OMDB API (optioneel, IMDb ratings + Rotten Tomatoes scores) |
 | Server | Python 3 custom server (`server.py`) met sync naar `data.js` en `state.json` |
 
 **Nul dependencies.** Geen npm, geen build-stap, geen node_modules.
