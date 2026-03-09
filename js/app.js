@@ -372,7 +372,7 @@ function render() {
                 return dir * (sa - sb) || a.t.localeCompare(b.t, 'nl');
             }
             case 'rt-desc': case 'rt-asc': {
-                const getRt = item => { const s = IMDB[item.t] && rtScores[IMDB[item.t]]; const v = s ? (typeof s === 'string' ? s : s && s.rt) : null; return v ? parseInt(v) : 0; };
+                const getRt = item => { const s = IMDB[item.t] && rtScores[IMDB[item.t]]; const v = s ? (typeof s === 'string' ? s : s.rt) : null; return v ? parseInt(v) : 0; };
                 const dir = sortVal === 'rt-desc' ? -1 : 1;
                 const sa = getRt(a), sb = getRt(b);
                 if (!sa && !sb) return a.t.localeCompare(b.t, 'nl');
@@ -1690,7 +1690,7 @@ async function backfillImdbIds() {
     }
 }
 
-// ── ROTTEN TOMATOES SCORES VIA OMDB ──
+// ── RT + IMDb SCORES VIA OMDB ──
 function saveRtScores() {
     try { localStorage.setItem('kijklijst_rt_scores', JSON.stringify(rtScores)); } catch(e) {}
 }
