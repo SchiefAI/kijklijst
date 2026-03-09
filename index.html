@@ -49,7 +49,6 @@
     <div class="hero-separator"></div>
 </div>
 
-<div class="controls-sticky" id="controlsSticky">
 <div class="controls">
     <div class="controls-always">
         <div class="search-wrap">
@@ -88,14 +87,12 @@
             <option value="rt-asc">Rotten Tomatoes (laag → hoog)</option>
         </select>
         <button class="picker-btn" id="pickerBtn" title="Wat zal ik kijken?">🎲 Random</button>
-        <button class="picker-btn" id="recsBtn" title="Aanbevelingen op basis van je ratings">🎯 Tips</button>
         <div class="btn-group view-toggle" id="viewToggle">
             <button class="active" data-view="grid" title="Grid weergave">▦</button>
             <button data-view="list" title="Lijst weergave">☰</button>
         </div>
         <button class="reset-filters-btn" id="resetFiltersBtn" style="display:none" onclick="resetFilters()">reset</button>
     </div>
-</div>
 </div>
 
 <main>
@@ -215,32 +212,6 @@
             <div class="import-summary" id="importSummary"></div>
             <button class="modal-submit" id="importConfirm">Toevoegen</button>
             <button class="import-back-btn" id="importBack">← Terug</button>
-        </div>
-    </div>
-</div>
-
-<!-- Recommendations overlay -->
-<div class="overlay" id="recsOverlay">
-    <div class="modal recs-modal">
-        <!-- Step 1: Loading -->
-        <div class="recs-step" id="recsStepLoading" style="display:none">
-            <div class="modal-title">Aanbevelingen ophalen...</div>
-            <div class="import-progress-bar"><div class="import-progress-fill" id="recsProgressFill"></div></div>
-            <div class="import-progress-text" id="recsProgressText">0 / 0</div>
-            <div class="import-progress-current" id="recsProgressCurrent"></div>
-        </div>
-        <!-- Step 2: Results -->
-        <div class="recs-step" id="recsStepResults" style="display:none">
-            <div class="recs-header">
-                <div class="modal-title">Aanbevelingen</div>
-                <button class="recs-shuffle-btn" id="recsShuffle" title="Andere selectie">🔄</button>
-            </div>
-            <div class="recs-list" id="recsList"></div>
-        </div>
-        <!-- Step 3: Empty -->
-        <div class="recs-step" id="recsStepEmpty" style="display:none">
-            <div class="modal-title">Geen aanbevelingen</div>
-            <p class="modal-hint">Geef eerst een paar titels 4+ sterren zodat we aanbevelingen kunnen genereren.</p>
         </div>
     </div>
 </div>
