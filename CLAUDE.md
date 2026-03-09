@@ -16,10 +16,10 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~1918 regels)
+css/style.css       → Alle styling (één bestand, ~2064 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~1799 regels)
+js/app.js           → Alle applicatielogica (~2030 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
 state.json          → User state: watched, ratings, order, tmdb_key, omdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
@@ -88,14 +88,14 @@ border: 1px solid rgba(255,255,255,.08);
 | Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~95-163 |
 | Star rating HTML helpers + ratingBlockHtml | ~165-213 |
 | View mode (grid/list) | ~215-222 |
-| DOM refs | ~224-232 |
+| DOM refs | ~224-236 |
 | populateDropdowns() (single-pass) | ~234-261 |
 | Dynamic dropdown counts | ~263-304 |
 | Toast notifications (showToast + undo) | ~306-328 |
 | Render (central, incl. empty-state + filter hints + scores) | ~330-534 |
-| Card description expand/collapse (poster + info click) | ~536-563 |
-| toggleWatch (met confirm + toast + undo) | ~536-563 |
-| removeItem (met confirm + toast + undo) | ~565-598 |
+| Card click → openDetail() | ~518-523 |
+| toggleWatch (met confirm + toast + undo) | ~525-552 |
+| removeItem (met confirm + toast + undo) | ~554-587 |
 | updateStats | ~600-607 |
 | Star rating interaction | ~609-657 |
 | Sparkle effect (5 sterren) | ~659-676 |
@@ -118,8 +118,10 @@ border: 1px solid rgba(255,255,255,.08);
 | IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1621-1692 |
 | RT + IMDb scores via OMDB (fetchRtScore, backfillRtScores) | ~1693-1741 |
 | refreshAllFromTmdb (one-time TMDB description refresh) | ~1743-1775 |
-| Scroll to top | ~1777-1785 |
-| Init + loadState + backfill trigger | ~1786-1799 |
+| Recommendations (getTopRatedSeeds, fetchAndShowRecs, openRecs, addFromRecs) | ~1781-1999 |
+| Detail overlay (openDetail, closeDetail, detail event handlers) | ~2000-2120 |
+| Scroll to top + sticky controls | ~2121-2130 |
+| Init + loadState + backfill trigger | ~2132-2145 |
 
 ## Conventies
 
@@ -149,12 +151,15 @@ border: 1px solid rgba(255,255,255,.08);
 - Escape key sluit alle modals/overlays (centralized handler)
 - `render()` bewaart scroll positie via `window.scrollY`
 - `@media (prefers-reduced-motion: reduce)` schakelt alle animaties uit
-- Card-beschrijvingen afgekapt op 3 regels (grid, 2 op mobiel) / 2 regels (list, 1 op mobiel); klik poster of tekst om uit te vouwen
+- Card-beschrijvingen afgekapt op 3 regels (grid, 2 op mobiel) / 2 regels (list, 1 op mobiel)
+- Klik op card opent detail overlay met volledige info (poster, metadata, scores, genres, beschrijving, links, acties, rating)
 - Klik op "Mijn Kijklijst" h1 reset alle filters + zoekveld
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
 - Na bulk import worden alleen de net toegevoegde titels getoond; bij elke gebruikersinteractie verdwijnt dit filter
 - IMDb rating (gele badge) en RT score (🍅) getoond op cards wanneer OMDB key geconfigureerd; scores gecached in localStorage (`kijklijst_rt_scores`)
+- Filterbalk is sticky (plakt bovenaan bij scrollen); `.controls-sticky` wrapper met `.stuck` class voor shadow-effect
+- Aanbevelingen modal (🎯 Tips): toont seed-attributie ("Vanwege X"), genre-tags en shuffle-knop
 
 ### IMDb auto-linking
 - `IMDB` object in `data.js` mapt titels → IMDb IDs
@@ -174,6 +179,17 @@ border: 1px solid rgba(255,255,255,.08);
 - Sorteeropties: IMDb (hoog→laag / laag→hoog) en Rotten Tomatoes (hoog→laag / laag→hoog)
 - OMDB key gesynchroniseerd via `state.json` (net als TMDB key)
 
+### Aanbevelingen (Recommendations)
+- `🎯 Tips` knop in filterbalk opent recommendations modal
+- `getTopRatedSeeds(minStars)` selecteert top 8 titels met hoogste rating; drempel verlaagt automatisch (4 → 3.5 → 3)
+- `getRatingStars(key)` helper extraheert numerieke waarde uit rating object `{ stars: number, review?: string }`
+- `ensureTmdbIds(seeds)` zoekt ontbrekende tmdbIds op via TMDB voordat aanbevelingen worden opgehaald
+- Per seed: TMDB `/movie/{id}/recommendations` of `/tv/{id}/recommendations`
+- Deduplicatie: bestaande titels via `getKey()` + duplicaten via tmdbId
+- Elke aanbeveling toont seed-attributie ("Vanwege X"), TMDB score en genre-tags (max 3)
+- `recsAllResults` bewaart volledige pool in-memory; shuffle-knop (🔄) reshufflet zonder nieuwe API calls
+- Per-item "+" knop → `buildItemFromTmdb()` → `fetchImdbId()` → `syncToFile()`
+
 ### Data formaat (data.js)
 ```javascript
 { t: "Titel", y: "2024", type: "film"|"serie", lang: "Engels", d: "Beschrijving", img: "poster-url", g: "Genre1, Genre2", tmdbId: 12345 }
@@ -189,7 +205,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v19'`
+- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v23'`
 - `data.js` staat **niet** in STATIC_ASSETS (verandert bij elke add/remove)
 - Cache strategieën:
   - Static assets (excl. data.js) → cache-first

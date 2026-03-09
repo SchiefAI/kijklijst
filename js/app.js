@@ -230,6 +230,10 @@ const genreFilter = document.getElementById('genreFilter');
 const langFilter = document.getElementById('langFilter');
 const sortSelect = document.getElementById('sortSelect');
 const viewToggle = document.getElementById('viewToggle');
+const detailOverlay = document.getElementById('detailOverlay');
+const detailPoster = document.getElementById('detailPoster');
+const detailInfo = document.getElementById('detailInfo');
+let currentDetailKey = null;
 
 // ── DROPDOWNS ──
 function populateDropdowns() {
@@ -514,23 +518,12 @@ function render() {
     updateFilterBadge();
 }
 
-// Toggle card description expand/collapse
+// Open detail overlay on card click
 grid.addEventListener('click', e => {
-    // Don't toggle if clicking a button, link, input, or star
     if (e.target.closest('a, button, input, textarea, .star-hit, .review-text')) return;
-    const desc = e.target.closest('.card-desc, .list-desc');
-    if (desc) { desc.classList.toggle('expanded'); return; }
-    // Click on poster or list-info to toggle description
     const card = e.target.closest('.card');
-    if (!card) return;
-    const clickedPoster = e.target.closest('.poster-wrap');
-    const clickedInfo = e.target.closest('.list-info');
-    if (clickedPoster || clickedInfo) {
-        const listDesc = card.querySelector('.list-desc');
-        const cardDesc = card.querySelector('.card-desc');
-        const target = listDesc || cardDesc;
-        if (target) target.classList.toggle('expanded');
-    }
+    if (!card || !card.dataset.key) return;
+    openDetail(card.dataset.key);
 });
 
 function toggleWatch(key) {
@@ -1607,6 +1600,8 @@ function updateFilterBadge() {
 // ── CENTRALIZED ESCAPE KEY ──
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    if (detailOverlay.classList.contains('visible')) { closeDetail(); return; }
+    if (recsOverlay.classList.contains('visible')) { closeRecs(); return; }
     if (importOverlay.classList.contains('visible')) { closeImport(); return; }
     if (addOverlay.classList.contains('visible')) { closeAdd(); return; }
     if (pickerOverlay.classList.contains('visible')) { closePicker(); return; }
@@ -1615,7 +1610,15 @@ document.addEventListener('keydown', e => {
 
 // ── SERVICE WORKER ──
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+            const newSW = reg.installing;
+            if (!newSW) return;
+            newSW.addEventListener('statechange', () => {
+                if (newSW.state === 'activated') location.reload();
+            });
+        });
+    }).catch(() => {});
 }
 
 // ── BACKFILL MISSING IMDB IDS ──
@@ -1774,10 +1777,353 @@ async function refreshAllFromTmdb() {
     console.info(`Refresh klaar: ${updated} beschrijvingen bijgewerkt`);
 }
 
-// ── SCROLL TO TOP ──
+// ══════════════════════════════════════════════
+// ── FEATURE 7: RECOMMENDATIONS ──
+// ══════════════════════════════════════════════
+const recsOverlay = document.getElementById('recsOverlay');
+const recsList = document.getElementById('recsList');
+const recsProgressFill = document.getElementById('recsProgressFill');
+const recsProgressText = document.getElementById('recsProgressText');
+const recsProgressCurrent = document.getElementById('recsProgressCurrent');
+
+function showRecsStep(step) {
+    document.getElementById('recsStepLoading').style.display = step === 'loading' ? '' : 'none';
+    document.getElementById('recsStepResults').style.display = step === 'results' ? '' : 'none';
+    document.getElementById('recsStepEmpty').style.display = step === 'empty' ? '' : 'none';
+}
+
+function getRatingStars(key) {
+    const r = ratings[key];
+    if (!r) return 0;
+    if (typeof r === 'number') return r;
+    if (r && typeof r.stars === 'number') return r.stars;
+    return 0;
+}
+
+function getTopRatedSeeds(minStars = 4) {
+    const seeds = DATA.filter(item => {
+        const key = getKey(item);
+        return getRatingStars(key) >= minStars;
+    });
+    seeds.sort((a, b) => getRatingStars(getKey(b)) - getRatingStars(getKey(a)));
+    return seeds.slice(0, 8);
+}
+
+async function ensureTmdbIds(seeds) {
+    let resolved = 0;
+    for (const item of seeds) {
+        if (item.tmdbId) continue;
+        const results = await searchTmdbTyped(item.t, item.type);
+        const match = bestTmdbMatch(results, item);
+        if (match) {
+            item.tmdbId = match.id;
+            resolved++;
+        }
+        await new Promise(r => setTimeout(r, 250));
+    }
+    if (resolved > 0) syncToFile();
+    return seeds.filter(item => item.tmdbId);
+}
+
+async function fetchTmdbRecommendations(tmdbId, mediaType) {
+    if (!tmdbKey) return [];
+    const type = mediaType === 'serie' ? 'tv' : 'movie';
+    const url = `https://api.themoviedb.org/3/${type}/${tmdbId}/recommendations?api_key=${encodeURIComponent(tmdbKey)}&language=nl-NL&page=1`;
+    try {
+        const resp = await fetch(url);
+        if (resp.status === 429) {
+            await new Promise(r => setTimeout(r, 2000));
+            const retry = await fetch(url);
+            if (!retry.ok) return [];
+            return (await retry.json()).results || [];
+        }
+        if (!resp.ok) return [];
+        return (await resp.json()).results || [];
+    } catch {
+        return [];
+    }
+}
+
+async function openRecs() {
+    if (!tmdbKey) {
+        openSettings();
+        showToast('Stel eerst een TMDB API key in');
+        return;
+    }
+
+    // Try thresholds: 4, 3.5, 3
+    let seeds = getTopRatedSeeds(4);
+    if (seeds.length < 2) seeds = getTopRatedSeeds(3.5);
+    if (seeds.length < 2) seeds = getTopRatedSeeds(3);
+
+    if (seeds.length === 0) {
+        showRecsStep('empty');
+        recsOverlay.classList.add('visible');
+        return;
+    }
+
+    showRecsStep('loading');
+    recsOverlay.classList.add('visible');
+
+    // Resolve missing tmdbIds before fetching recommendations
+    seeds = await ensureTmdbIds(seeds);
+    if (seeds.length === 0) {
+        showRecsStep('empty');
+        return;
+    }
+
+    await fetchAndShowRecs(seeds);
+}
+
+let recsAllResults = []; // full pool for shuffle
+
+async function fetchAndShowRecs(seeds) {
+    // Collect existing keys for dedup
+    const existingKeys = new Set(DATA.map(d => getKey(d)));
+    const seenTmdbIds = new Set();
+    recsAllResults = [];
+
+    for (let i = 0; i < seeds.length; i++) {
+        const seed = seeds[i];
+        recsProgressFill.style.width = ((i + 1) / seeds.length * 100) + '%';
+        recsProgressText.textContent = `${i + 1} / ${seeds.length}`;
+        recsProgressCurrent.textContent = seed.t;
+
+        const mediaType = seed.type === 'serie' ? 'tv' : 'movie';
+        const results = await fetchTmdbRecommendations(seed.tmdbId, seed.type);
+
+        for (const r of results) {
+            if (seenTmdbIds.has(r.id)) continue;
+            seenTmdbIds.add(r.id);
+            const recMediaType = mediaType === 'tv' ? 'tv' : 'movie';
+            const title = r.title || r.name || '';
+            const recKey = title.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (existingKeys.has(recKey)) continue;
+            recsAllResults.push({
+                ...r,
+                media_type: recMediaType === 'tv' ? 'tv' : 'movie',
+                seedTitle: seed.t
+            });
+        }
+
+        if (i < seeds.length - 1) await new Promise(r => setTimeout(r, 250));
+    }
+
+    if (recsAllResults.length === 0) {
+        showRecsStep('empty');
+        return;
+    }
+
+    showShuffledRecs();
+}
+
+function showShuffledRecs() {
+    // Shuffle then sort by vote_average, take top 20
+    const shuffled = [...recsAllResults].sort(() => Math.random() - 0.5);
+    shuffled.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+    const top = shuffled.slice(0, 20);
+    renderRecsResults(top);
+    showRecsStep('results');
+}
+
+function renderRecsResults(recs) {
+    recsList.innerHTML = recs.map((r, i) => {
+        const title = escapeHtml(r.title || r.name || '');
+        const year = (r.release_date || r.first_air_date || '').slice(0, 4);
+        const type = r.media_type === 'movie' ? 'Film' : 'Serie';
+        const score = r.vote_average ? (r.vote_average).toFixed(1) : '';
+        const posterPath = r.poster_path ? `https://image.tmdb.org/t/p/w92${r.poster_path}` : '';
+        const poster = posterPath
+            ? `<img class="recs-row-poster" src="${posterPath}" alt="">`
+            : `<div class="recs-row-poster"></div>`;
+        const genres = tmdbGenreNames(r.genre_ids);
+        const genreTags = genres ? genres.split(', ').slice(0, 3).map(g =>
+            `<span class="recs-genre-tag">${escapeHtml(g)}</span>`
+        ).join('') : '';
+        const seedLabel = r.seedTitle ? `<div class="recs-row-seed">Vanwege ${escapeHtml(r.seedTitle)}</div>` : '';
+
+        return `<div class="recs-row" data-idx="${i}">
+            ${poster}
+            <div class="recs-row-info">
+                <div class="recs-row-title">${title}</div>
+                <div class="recs-row-meta">${year}${year && type ? ' · ' : ''}${type}${score ? ' · ⭐ ' + score : ''}</div>
+                ${genreTags ? `<div class="recs-row-genres">${genreTags}</div>` : ''}
+                ${seedLabel}
+            </div>
+            <button class="recs-row-add" title="Toevoegen aan lijst" onclick="addFromRecs(${i})">+</button>
+        </div>`;
+    }).join('');
+
+    // Store recs data for adding
+    recsList._recsData = recs;
+}
+
+async function addFromRecs(idx) {
+    const recs = recsList._recsData;
+    if (!recs || !recs[idx]) return;
+    const r = recs[idx];
+
+    const item = buildItemFromTmdb(r);
+    DATA.push(item);
+
+    // Replace + button with "Toegevoegd" label
+    const row = recsList.querySelector(`[data-idx="${idx}"]`);
+    if (row) {
+        const btn = row.querySelector('.recs-row-add');
+        if (btn) {
+            const added = document.createElement('span');
+            added.className = 'recs-row-added';
+            added.textContent = '✓';
+            btn.replaceWith(added);
+        }
+    }
+
+    // Fetch IMDb ID in background
+    const mediaType = r.media_type === 'movie' ? 'movie' : 'tv';
+    const imdbId = await fetchImdbId(r.id, mediaType);
+    if (imdbId) IMDB[item.t] = imdbId;
+
+    syncToFile();
+    populateDropdowns();
+    render();
+    showToast(`"${item.t}" toegevoegd`);
+}
+
+function closeRecs() {
+    recsOverlay.classList.remove('visible');
+}
+
+document.getElementById('recsBtn').addEventListener('click', openRecs);
+document.getElementById('recsShuffle').addEventListener('click', showShuffledRecs);
+recsOverlay.addEventListener('click', e => { if (e.target === recsOverlay) closeRecs(); });
+
+// ── DETAIL OVERLAY ──
+function openDetail(key) {
+    const item = DATA.find(i => getKey(i) === key);
+    if (!item) return;
+    currentDetailKey = key;
+    const isWatched = !!watched[key];
+    const imgSrc = safeImageUrl(item.img);
+    const hasImg = !!imgSrc;
+
+    // Poster
+    detailPoster.innerHTML = `
+        <div class="poster-wrap">
+            <div class="poster-gradient" style="background:${hashColor(item.t)}">${initials(item.t)}</div>
+            ${hasImg ? `<img class="poster-img" src="${imgSrc}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
+            <span class="type-badge ${item.type}">${item.type === 'serie' ? 'Serie' : 'Film'}</span>
+        </div>`;
+
+    // Scores
+    const imdbId = IMDB[item.t];
+    const scoreData = imdbId ? rtScores[imdbId] : null;
+    const rtVal = scoreData ? (typeof scoreData === 'string' ? scoreData : scoreData.rt) : null;
+    const imdbVal = scoreData && typeof scoreData === 'object' ? scoreData.imdb : null;
+    const imdbScoreHtml = imdbVal ? `<span class="imdb-score"><span class="imdb-badge">IMDb</span> ${escapeHtml(imdbVal)}</span>` : '';
+    const rtHtml = rtVal ? `<span class="rt-score">&#x1F345; ${escapeHtml(rtVal)}</span>` : '';
+    const scoresHtml = (imdbScoreHtml || rtHtml) ? `<div class="detail-scores">${[imdbScoreHtml, rtHtml].filter(Boolean).join(' ')}</div>` : '';
+
+    // Meta
+    const metaParts = [];
+    if (item.y) metaParts.push(escapeHtml(item.y));
+    if (item.lang) metaParts.push(escapeHtml(item.lang));
+
+    // Info
+    detailInfo.innerHTML = `
+        <div class="detail-title">${escapeHtml(item.t)}</div>
+        ${metaParts.length ? `<div class="detail-meta">${metaParts.join(' · ')}</div>` : ''}
+        ${scoresHtml}
+        ${genreBadges(item.g)}
+        ${item.d ? `<div class="detail-desc">${escapeHtml(item.d)}</div>` : ''}
+        <div class="detail-links">
+            <a href="${imdbUrl(item.t)}" target="_blank" rel="noopener" class="link-btn imdb">IMDb</a>
+            <a href="${jwUrl(item.t)}" target="_blank" rel="noopener" class="link-btn jw">Waar te kijken</a>
+        </div>
+        <div class="detail-actions">
+            <button class="watch-btn ${isWatched ? 'watched' : ''}" id="detailWatchBtn">
+                ${isWatched ? '✓ Gezien' : '○ Markeer als gezien'}
+            </button>
+            <button class="remove-btn" id="detailRemoveBtn">✕ Verwijderen</button>
+        </div>
+        <div class="detail-rating">${ratingBlockHtml(key, isWatched)}</div>`;
+
+    detailOverlay.classList.add('visible');
+}
+
+function closeDetail() {
+    detailOverlay.classList.remove('visible');
+    currentDetailKey = null;
+}
+
+document.getElementById('detailClose').addEventListener('click', closeDetail);
+detailOverlay.addEventListener('click', e => { if (e.target === detailOverlay) closeDetail(); });
+
+// Detail: watch toggle + remove
+detailInfo.addEventListener('click', e => {
+    if (e.target.closest('#detailWatchBtn')) {
+        if (!currentDetailKey) return;
+        toggleWatch(currentDetailKey);
+        openDetail(currentDetailKey);
+        return;
+    }
+    if (e.target.closest('#detailRemoveBtn')) {
+        if (!currentDetailKey) return;
+        const item = DATA.find(i => getKey(i) === currentDetailKey);
+        if (!item) return;
+        closeDetail();
+        removeItem(currentDetailKey, item.t);
+    }
+});
+
+// Detail: star rating
+detailInfo.addEventListener('click', e => {
+    const hit = e.target.closest('.star-hit');
+    if (!hit) return;
+    const ratingWrap = hit.closest('.star-rating');
+    if (!ratingWrap) return;
+    const key = ratingWrap.dataset.key;
+    const val = parseFloat(hit.dataset.val);
+    if (!key || isNaN(val)) return;
+    if (!ratings[key]) ratings[key] = {};
+    ratings[key].stars = val;
+    saveRatings();
+    if (val === 5) spawnSparkles(detailInfo.closest('.detail-modal'));
+    render();
+    openDetail(key);
+});
+
+// Detail: review click to edit + save on blur + enter
+detailInfo.addEventListener('click', e => {
+    const reviewText = e.target.closest('.review-text');
+    if (!reviewText) return;
+    const key = reviewText.dataset.key;
+    const input = reviewText.parentElement.querySelector('.review-input');
+    if (!input) return;
+    reviewText.style.display = 'none';
+    input.style.display = '';
+    input.focus();
+});
+detailInfo.addEventListener('focusout', e => {
+    if (!e.target.classList.contains('review-input')) return;
+    const key = e.target.dataset.key;
+    if (!key) return;
+    if (!ratings[key]) ratings[key] = {};
+    ratings[key].review = e.target.value.trim();
+    saveRatings();
+    render();
+    openDetail(key);
+});
+detailInfo.addEventListener('keydown', e => {
+    if (!e.target.classList.contains('review-input')) return;
+    if (e.key === 'Enter') e.target.blur();
+});
+
+// ── SCROLL TO TOP + STICKY CONTROLS ──
 const scrollTopBtn = document.getElementById('scrollTop');
+const controlsSticky = document.getElementById('controlsSticky');
 window.addEventListener('scroll', () => {
     scrollTopBtn.classList.toggle('visible', window.scrollY > 400);
+    controlsSticky.classList.toggle('stuck', window.scrollY > 200);
 });
 scrollTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
