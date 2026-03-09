@@ -16,10 +16,10 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~2061 regels)
+css/style.css       → Alle styling (één bestand, ~2064 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~2022 regels)
+js/app.js           → Alle applicatielogica (~2030 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
 state.json          → User state: watched, ratings, order, tmdb_key, omdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)

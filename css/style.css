@@ -241,8 +241,12 @@ body {
     justify-content: center;
     align-items: center;
     padding: 1.25rem 1rem;
-    max-width: 1400px;
+    max-width: 1500px;
     margin: 0 auto;
+}
+.controls select.sort-select {
+    max-width: 170px;
+    text-overflow: ellipsis;
 }
 .controls-always {
     display: contents;
@@ -268,7 +272,6 @@ body {
 .search-wrap {
     position: relative;
     flex: 0 1 160px;
-    margin-left: auto;
 }
 .search-clear {
     display: none;
