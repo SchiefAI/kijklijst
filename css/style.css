@@ -2062,3 +2062,164 @@ select.sort-select:focus {
     opacity: .7;
     margin-top: .15rem;
 }
+
+/* ── DETAIL OVERLAY ── */
+.detail-modal {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid rgba(229,160,13,.2);
+    border-radius: 20px;
+    padding: 2rem;
+    width: 92%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 60px rgba(0,0,0,.5), 0 0 40px rgba(229,160,13,.06);
+    transform: translateY(20px);
+    transition: transform .3s;
+}
+.overlay.visible .detail-modal { transform: translateY(0); }
+.detail-close {
+    position: absolute;
+    top: .75rem;
+    right: .75rem;
+    z-index: 2;
+    background: rgba(7,10,18,.7);
+    border: 1px solid rgba(255,255,255,.1);
+    color: var(--text-dim);
+    font-size: 1.1rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color .2s, border-color .2s;
+}
+.detail-close:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+.detail-layout {
+    display: flex;
+    gap: 1.5rem;
+}
+.detail-poster {
+    flex-shrink: 0;
+    width: 200px;
+}
+.detail-poster .poster-wrap {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 2/3;
+}
+.detail-poster .poster-gradient {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.15);
+    letter-spacing: .1em;
+}
+.detail-poster .poster-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.detail-poster .type-badge {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+}
+.detail-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+.detail-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+}
+.detail-meta {
+    font-size: .85rem;
+    color: var(--text-dim);
+}
+.detail-scores {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    font-size: .85rem;
+}
+.detail-scores .imdb-score { font-size: .85rem; }
+.detail-scores .rt-score { font-size: .85rem; color: var(--text-dim); }
+.detail-desc {
+    font-size: .88rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+}
+.detail-links {
+    display: flex;
+    gap: .5rem;
+    margin-top: .25rem;
+}
+.detail-links .link-btn {
+    font-size: .8rem;
+    padding: .35rem .7rem;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: background .2s, color .2s;
+}
+.detail-links .link-btn:hover { background: rgba(255,255,255,.1); color: var(--text); }
+.detail-links .link-btn.imdb { color: var(--accent); border-color: rgba(229,160,13,.2); }
+.detail-links .link-btn.imdb:hover { background: rgba(229,160,13,.1); }
+.detail-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-top: .5rem;
+}
+.detail-actions .watch-btn {
+    margin-top: 0;
+    font-size: .82rem;
+    padding: .45rem .9rem;
+}
+.detail-actions .remove-btn {
+    width: auto;
+    height: auto;
+    font-size: .82rem;
+    padding: .45rem .7rem;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s, color .2s, border-color .2s;
+}
+.detail-actions .remove-btn:hover { background: rgba(239,68,68,.1); color: #ef4444; border-color: rgba(239,68,68,.25); }
+.detail-rating {
+    margin-top: .25rem;
+}
+
+@media (max-width: 600px) {
+    .detail-modal { padding: 1.5rem 1.2rem; border-radius: 16px; max-width: 100%; width: 94%; }
+    .detail-layout { flex-direction: column; align-items: center; }
+    .detail-poster { width: 160px; }
+    .detail-info { align-items: center; text-align: center; }
+    .detail-scores { justify-content: center; }
+    .detail-links { justify-content: center; }
+    .detail-actions { justify-content: center; }
+    .detail-info .genre-badges { justify-content: center; }
+    .detail-rating { display: flex; flex-direction: column; align-items: center; }
+}

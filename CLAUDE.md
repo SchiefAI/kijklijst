@@ -88,14 +88,14 @@ border: 1px solid rgba(255,255,255,.08);
 | Helpers (hashColor, getKey, escapeHtml, imdbUrl, jwUrl) | ~95-163 |
 | Star rating HTML helpers + ratingBlockHtml | ~165-213 |
 | View mode (grid/list) | ~215-222 |
-| DOM refs | ~224-232 |
+| DOM refs | ~224-236 |
 | populateDropdowns() (single-pass) | ~234-261 |
 | Dynamic dropdown counts | ~263-304 |
 | Toast notifications (showToast + undo) | ~306-328 |
 | Render (central, incl. empty-state + filter hints + scores) | ~330-534 |
-| Card description expand/collapse (poster + info click) | ~536-563 |
-| toggleWatch (met confirm + toast + undo) | ~536-563 |
-| removeItem (met confirm + toast + undo) | ~565-598 |
+| Card click → openDetail() | ~518-523 |
+| toggleWatch (met confirm + toast + undo) | ~525-552 |
+| removeItem (met confirm + toast + undo) | ~554-587 |
 | updateStats | ~600-607 |
 | Star rating interaction | ~609-657 |
 | Sparkle effect (5 sterren) | ~659-676 |
@@ -118,9 +118,10 @@ border: 1px solid rgba(255,255,255,.08);
 | IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1621-1692 |
 | RT + IMDb scores via OMDB (fetchRtScore, backfillRtScores) | ~1693-1741 |
 | refreshAllFromTmdb (one-time TMDB description refresh) | ~1743-1775 |
-| Recommendations (getTopRatedSeeds, fetchAndShowRecs, openRecs, addFromRecs) | ~1778-1997 |
-| Scroll to top + sticky controls | ~1998-2008 |
-| Init + loadState + backfill trigger | ~2009-2022 |
+| Recommendations (getTopRatedSeeds, fetchAndShowRecs, openRecs, addFromRecs) | ~1781-1999 |
+| Detail overlay (openDetail, closeDetail, detail event handlers) | ~2000-2120 |
+| Scroll to top + sticky controls | ~2121-2130 |
+| Init + loadState + backfill trigger | ~2132-2145 |
 
 ## Conventies
 
@@ -150,7 +151,8 @@ border: 1px solid rgba(255,255,255,.08);
 - Escape key sluit alle modals/overlays (centralized handler)
 - `render()` bewaart scroll positie via `window.scrollY`
 - `@media (prefers-reduced-motion: reduce)` schakelt alle animaties uit
-- Card-beschrijvingen afgekapt op 3 regels (grid, 2 op mobiel) / 2 regels (list, 1 op mobiel); klik poster of tekst om uit te vouwen
+- Card-beschrijvingen afgekapt op 3 regels (grid, 2 op mobiel) / 2 regels (list, 1 op mobiel)
+- Klik op card opent detail overlay met volledige info (poster, metadata, scores, genres, beschrijving, links, acties, rating)
 - Klik op "Mijn Kijklijst" h1 reset alle filters + zoekveld
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
@@ -203,7 +205,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v22'`
+- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v23'`
 - `data.js` staat **niet** in STATIC_ASSETS (verandert bij elke add/remove)
 - Cache strategieën:
   - Static assets (excl. data.js) → cache-first

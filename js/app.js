@@ -230,6 +230,10 @@ const genreFilter = document.getElementById('genreFilter');
 const langFilter = document.getElementById('langFilter');
 const sortSelect = document.getElementById('sortSelect');
 const viewToggle = document.getElementById('viewToggle');
+const detailOverlay = document.getElementById('detailOverlay');
+const detailPoster = document.getElementById('detailPoster');
+const detailInfo = document.getElementById('detailInfo');
+let currentDetailKey = null;
 
 // ── DROPDOWNS ──
 function populateDropdowns() {
@@ -514,23 +518,12 @@ function render() {
     updateFilterBadge();
 }
 
-// Toggle card description expand/collapse
+// Open detail overlay on card click
 grid.addEventListener('click', e => {
-    // Don't toggle if clicking a button, link, input, or star
     if (e.target.closest('a, button, input, textarea, .star-hit, .review-text')) return;
-    const desc = e.target.closest('.card-desc, .list-desc');
-    if (desc) { desc.classList.toggle('expanded'); return; }
-    // Click on poster or list-info to toggle description
     const card = e.target.closest('.card');
-    if (!card) return;
-    const clickedPoster = e.target.closest('.poster-wrap');
-    const clickedInfo = e.target.closest('.list-info');
-    if (clickedPoster || clickedInfo) {
-        const listDesc = card.querySelector('.list-desc');
-        const cardDesc = card.querySelector('.card-desc');
-        const target = listDesc || cardDesc;
-        if (target) target.classList.toggle('expanded');
-    }
+    if (!card || !card.dataset.key) return;
+    openDetail(card.dataset.key);
 });
 
 function toggleWatch(key) {
@@ -1607,6 +1600,7 @@ function updateFilterBadge() {
 // ── CENTRALIZED ESCAPE KEY ──
 document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    if (detailOverlay.classList.contains('visible')) { closeDetail(); return; }
     if (recsOverlay.classList.contains('visible')) { closeRecs(); return; }
     if (importOverlay.classList.contains('visible')) { closeImport(); return; }
     if (addOverlay.classList.contains('visible')) { closeAdd(); return; }
@@ -2002,6 +1996,127 @@ function closeRecs() {
 document.getElementById('recsBtn').addEventListener('click', openRecs);
 document.getElementById('recsShuffle').addEventListener('click', showShuffledRecs);
 recsOverlay.addEventListener('click', e => { if (e.target === recsOverlay) closeRecs(); });
+
+// ── DETAIL OVERLAY ──
+function openDetail(key) {
+    const item = DATA.find(i => getKey(i) === key);
+    if (!item) return;
+    currentDetailKey = key;
+    const isWatched = !!watched[key];
+    const imgSrc = safeImageUrl(item.img);
+    const hasImg = !!imgSrc;
+
+    // Poster
+    detailPoster.innerHTML = `
+        <div class="poster-wrap">
+            <div class="poster-gradient" style="background:${hashColor(item.t)}">${initials(item.t)}</div>
+            ${hasImg ? `<img class="poster-img" src="${imgSrc}" alt="${escapeHtml(item.t)}" style="display:block" onerror="this.style.display='none'">` : ''}
+            <span class="type-badge ${item.type}">${item.type === 'serie' ? 'Serie' : 'Film'}</span>
+        </div>`;
+
+    // Scores
+    const imdbId = IMDB[item.t];
+    const scoreData = imdbId ? rtScores[imdbId] : null;
+    const rtVal = scoreData ? (typeof scoreData === 'string' ? scoreData : scoreData.rt) : null;
+    const imdbVal = scoreData && typeof scoreData === 'object' ? scoreData.imdb : null;
+    const imdbScoreHtml = imdbVal ? `<span class="imdb-score"><span class="imdb-badge">IMDb</span> ${escapeHtml(imdbVal)}</span>` : '';
+    const rtHtml = rtVal ? `<span class="rt-score">&#x1F345; ${escapeHtml(rtVal)}</span>` : '';
+    const scoresHtml = (imdbScoreHtml || rtHtml) ? `<div class="detail-scores">${[imdbScoreHtml, rtHtml].filter(Boolean).join(' ')}</div>` : '';
+
+    // Meta
+    const metaParts = [];
+    if (item.y) metaParts.push(escapeHtml(item.y));
+    if (item.lang) metaParts.push(escapeHtml(item.lang));
+
+    // Info
+    detailInfo.innerHTML = `
+        <div class="detail-title">${escapeHtml(item.t)}</div>
+        ${metaParts.length ? `<div class="detail-meta">${metaParts.join(' · ')}</div>` : ''}
+        ${scoresHtml}
+        ${genreBadges(item.g)}
+        ${item.d ? `<div class="detail-desc">${escapeHtml(item.d)}</div>` : ''}
+        <div class="detail-links">
+            <a href="${imdbUrl(item.t)}" target="_blank" rel="noopener" class="link-btn imdb">IMDb</a>
+            <a href="${jwUrl(item.t)}" target="_blank" rel="noopener" class="link-btn jw">Waar te kijken</a>
+        </div>
+        <div class="detail-actions">
+            <button class="watch-btn ${isWatched ? 'watched' : ''}" id="detailWatchBtn">
+                ${isWatched ? '✓ Gezien' : '○ Markeer als gezien'}
+            </button>
+            <button class="remove-btn" id="detailRemoveBtn">✕ Verwijderen</button>
+        </div>
+        <div class="detail-rating">${ratingBlockHtml(key, isWatched)}</div>`;
+
+    detailOverlay.classList.add('visible');
+}
+
+function closeDetail() {
+    detailOverlay.classList.remove('visible');
+    currentDetailKey = null;
+}
+
+document.getElementById('detailClose').addEventListener('click', closeDetail);
+detailOverlay.addEventListener('click', e => { if (e.target === detailOverlay) closeDetail(); });
+
+// Detail: watch toggle + remove
+detailInfo.addEventListener('click', e => {
+    if (e.target.closest('#detailWatchBtn')) {
+        if (!currentDetailKey) return;
+        toggleWatch(currentDetailKey);
+        openDetail(currentDetailKey);
+        return;
+    }
+    if (e.target.closest('#detailRemoveBtn')) {
+        if (!currentDetailKey) return;
+        const item = DATA.find(i => getKey(i) === currentDetailKey);
+        if (!item) return;
+        closeDetail();
+        removeItem(currentDetailKey, item.t);
+    }
+});
+
+// Detail: star rating
+detailInfo.addEventListener('click', e => {
+    const hit = e.target.closest('.star-hit');
+    if (!hit) return;
+    const ratingWrap = hit.closest('.star-rating');
+    if (!ratingWrap) return;
+    const key = ratingWrap.dataset.key;
+    const val = parseFloat(hit.dataset.val);
+    if (!key || isNaN(val)) return;
+    if (!ratings[key]) ratings[key] = {};
+    ratings[key].stars = val;
+    saveRatings();
+    if (val === 5) spawnSparkles(detailInfo.closest('.detail-modal'));
+    render();
+    openDetail(key);
+});
+
+// Detail: review click to edit + save on blur + enter
+detailInfo.addEventListener('click', e => {
+    const reviewText = e.target.closest('.review-text');
+    if (!reviewText) return;
+    const key = reviewText.dataset.key;
+    const input = reviewText.parentElement.querySelector('.review-input');
+    if (!input) return;
+    reviewText.style.display = 'none';
+    input.style.display = '';
+    input.focus();
+});
+detailInfo.addEventListener('focusout', e => {
+    if (!e.target.classList.contains('review-input')) return;
+    const key = e.target.dataset.key;
+    if (!key) return;
+    if (!ratings[key]) ratings[key] = {};
+    ratings[key].review = e.target.value.trim();
+    saveRatings();
+    render();
+    openDetail(key);
+});
+detailInfo.addEventListener('keydown', e => {
+    if (!e.target.classList.contains('review-input')) return;
+    if (e.key === 'Enter') e.target.blur();
+});
 
 // ── SCROLL TO TOP + STICKY CONTROLS ──
 const scrollTopBtn = document.getElementById('scrollTop');
