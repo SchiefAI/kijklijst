@@ -22,6 +22,8 @@ Een persoonlijke film- en serie-tracker als Progressive Web App (PWA). Geen acco
   - [Drag-and-drop volgorde](#drag-and-drop-volgorde)
   - [TMDB auto-complete](#tmdb-auto-complete)
   - [Bulk import](#bulk-import)
+  - [Detail overlay](#detail-overlay)
+  - [Aanbevelingen](#aanbevelingen)
 - [TMDB API key instellen](#tmdb-api-key-instellen)
 - [OMDB API key instellen](#omdb-api-key-instellen)
 - [Dataopslag](#dataopslag)
@@ -114,23 +116,19 @@ Na installatie opent de app fullscreen zonder adresbalk.
 5. Klik "Toevoegen"
 
 **Gezien markeren:**
-- Klik "○ Markeer als gezien" op een card
+- Open de detail overlay (klik op een card) en klik "○ Markeer als gezien"
 - De card wordt gedempt weergegeven met een groen ✓ vinkje
 - Klik nogmaals om de markering ongedaan te maken
 - Bij elke actie verschijnt een toast-melding met **"Ongedaan maken"** optie
 
 **Verwijderen:**
-- Klik op het kleine **✕** knopje rechts van de IMDb/JustWatch links
-- Het item wordt verwijderd — een toast-melding verschijnt met een **"Ongedaan maken"** knop (5 seconden)
+- Open de detail overlay en klik "✕ Verwijderen"
+- Een bevestigingsdialoog verschijnt, gevolgd door een toast-melding met **"Ongedaan maken"** knop (5 seconden)
 - Het item wordt volledig verwijderd (inclusief rating en watch-status)
 
 **Links:**
 - **IMDb** — opent de IMDb-pagina van de titel (IMDb IDs worden automatisch opgehaald via TMDB)
 - **Waar te kijken** — zoekt op JustWatch waar je de titel kunt streamen in Nederland
-
-**Beschrijvingen:**
-- Beschrijvingen zijn afgekapt op 3 regels (grid) of 2 regels (lijst); op mobiel 2 resp. 1 regel
-- Klik op de poster of tekst om de volledige beschrijving te tonen, klik nogmaals om in te klappen
 
 **Titel als reset:**
 - Klik op "Mijn Kijklijst" in de header om alle filters en het zoekveld te resetten
@@ -170,8 +168,8 @@ De genre- en taaldropdowns tonen dynamisch hoeveel resultaten er per optie zijn,
 
 Schakel tussen twee weergaven met de knoppen rechts in de controls-balk:
 
-- **▦ Grid** — kaarten in een 5-koloms raster met staande posters (2:3), beschrijving, genres en links
-- **☰ Lijst** — compacte rijen met kleine poster, titel en acties op één lijn
+- **▦ Grid** — compacte kaarten in een 6-koloms raster met staande posters (2:3), titel en scores. Klik op een card voor alle details
+- **☰ Lijst** — rijen met kleine poster, titel, beschrijving en acties op één lijn
 
 De voorkeur wordt onthouden tussen sessies.
 
@@ -241,6 +239,36 @@ Heb je een lijst met titels (bijv. uit een spreadsheet of kladblok)? Importeer z
 Je kunt het importproces halverwege annuleren — de tot-dan-toe opgehaalde resultaten worden dan getoond in het review-scherm.
 
 > **Tip:** de bulk import is ook bereikbaar via een knop in de lege state (als je nog geen titels hebt).
+
+### Detail overlay
+
+Klik op een willekeurige card (grid of lijst) om de detail overlay te openen met alle info:
+
+- Grote poster met type-badge
+- Titel, jaar en taal
+- IMDb rating en Rotten Tomatoes score (als OMDB key ingesteld)
+- Genre-badges
+- Volledige beschrijving
+- Links naar **IMDb** en **Waar te kijken** (JustWatch)
+- **Markeer als gezien** / **Verwijderen** knoppen
+- Interactieve sterrenrating + review (bij gezien-status)
+
+Sluiten: klik op **✕**, druk **Escape**, of klik buiten de modal.
+
+### Aanbevelingen
+
+Klik op **🎯 Tips** in de filterbalk voor gepersonaliseerde aanbevelingen:
+
+1. De app selecteert je hoogst gewaardeerde titels als "seeds"
+2. Per seed worden aanbevelingen opgehaald via TMDB
+3. Je ziet een lijst van 20 aanbevelingen met poster, titel, TMDB-score, genre-tags en de seed ("Vanwege X")
+4. Klik op een poster of titel om de TMDB-pagina te bekijken
+5. Klik **+** om een aanbeveling direct toe te voegen aan je lijst
+6. Klik de **shuffle-knop** voor een andere selectie uit dezelfde pool
+
+Na het sluiten van de overlay worden alleen de net-toegevoegde titels getoond.
+
+> **Vereist:** een TMDB API key en minstens een paar titels met 3+ sterren.
 
 ---
 
@@ -397,7 +425,8 @@ Na de eerste keer laden werkt de app volledig offline (behalve TMDB-zoeken en ni
 
 | Breedte | Aanpassing |
 |---------|-----------|
-| > 600px | Desktop: 5-koloms grid, zijdelingse controls |
+| > 900px | Desktop: 6-koloms grid, zijdelingse controls |
+| ≤ 900px | Tablet: 4-koloms grid |
 | ≤ 600px | Mobiel: 2-koloms grid, inklapbare filters, standaard list view, grotere touch-targets (44-48px) |
 | ≤ 380px | Kleine telefoons: 2-koloms grid |
 

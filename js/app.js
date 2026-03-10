@@ -499,11 +499,6 @@ function render() {
             <div class="card-body">
                 <div class="card-title">${escapeHtml(item.t)}</div>
                 ${item.y || scoresHtml ? `<div class="card-year">${item.y ? escapeHtml(item.y) : ''}${scoresHtml ? `${item.y ? ' · ' : ''}${scoresHtml}` : ''}</div>` : ''}
-                ${genreBadges(item.g)}
-                ${item.d ? `<div class="card-desc">${escapeHtml(item.d)}</div>` : ''}
-                ${linksHtml}
-                ${watchHtml}
-                ${ratingHtml}
             </div>
         </div>`;
     }).join('');
@@ -1918,10 +1913,14 @@ async function fetchAndShowRecs(seeds) {
 }
 
 function showShuffledRecs() {
-    // Shuffle then sort by vote_average, take top 20
-    const shuffled = [...recsAllResults].sort(() => Math.random() - 0.5);
-    shuffled.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
-    const top = shuffled.slice(0, 20);
+    // Weighted shuffle: higher scores are more likely to appear first, but with randomness
+    const pool = [...recsAllResults];
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const top = pool.slice(0, 20);
+    top.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
     renderRecsResults(top);
     showRecsStep('results');
 }
@@ -1942,10 +1941,14 @@ function renderRecsResults(recs) {
         ).join('') : '';
         const seedLabel = r.seedTitle ? `<div class="recs-row-seed">Vanwege ${escapeHtml(r.seedTitle)}</div>` : '';
 
+        const tmdbUrl = r.media_type === 'movie'
+            ? `https://www.themoviedb.org/movie/${r.id}`
+            : `https://www.themoviedb.org/tv/${r.id}`;
+
         return `<div class="recs-row" data-idx="${i}">
-            ${poster}
+            <a href="${tmdbUrl}" target="_blank" rel="noopener" class="recs-row-link">${poster}</a>
             <div class="recs-row-info">
-                <div class="recs-row-title">${title}</div>
+                <a href="${tmdbUrl}" target="_blank" rel="noopener" class="recs-row-title-link">${title}</a>
                 <div class="recs-row-meta">${year}${year && type ? ' · ' : ''}${type}${score ? ' · ⭐ ' + score : ''}</div>
                 ${genreTags ? `<div class="recs-row-genres">${genreTags}</div>` : ''}
                 ${seedLabel}
@@ -1965,6 +1968,7 @@ async function addFromRecs(idx) {
 
     const item = buildItemFromTmdb(r);
     DATA.push(item);
+    newlyAdded.add(getKey(item));
 
     // Replace + button with "Toegevoegd" label
     const row = recsList.querySelector(`[data-idx="${idx}"]`);
@@ -1991,6 +1995,19 @@ async function addFromRecs(idx) {
 
 function closeRecs() {
     recsOverlay.classList.remove('visible');
+    if (newlyAdded.size > 0) {
+        // Reset filters without clearing newlyAdded so just-added titles are shown
+        typeFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        const allTypeBtn = typeFilter.querySelector('[data-type="all"]');
+        if (allTypeBtn) allTypeBtn.classList.add('active');
+        statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        const allStatusBtn = statusFilter.querySelector('[data-status="all"]');
+        if (allStatusBtn) allStatusBtn.classList.add('active');
+        genreFilter.value = 'all';
+        langFilter.value = 'all';
+        searchBox.value = '';
+        render();
+    }
 }
 
 document.getElementById('recsBtn').addEventListener('click', openRecs);
@@ -2068,10 +2085,11 @@ detailInfo.addEventListener('click', e => {
     }
     if (e.target.closest('#detailRemoveBtn')) {
         if (!currentDetailKey) return;
-        const item = DATA.find(i => getKey(i) === currentDetailKey);
+        const key = currentDetailKey;
+        const item = DATA.find(i => getKey(i) === key);
         if (!item) return;
         closeDetail();
-        removeItem(currentDetailKey, item.t);
+        removeItem(key, item.t);
     }
 });
 

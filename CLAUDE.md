@@ -16,10 +16,10 @@ python3 server.py                  # of ./start.sh
 
 ```
 index.html          → Hoofd-HTML, alle overlays/modals
-css/style.css       → Alle styling (één bestand, ~2064 regels)
+css/style.css       → Alle styling (één bestand, ~2228 regels)
 js/data.js          → Persoonlijke titels + IMDB mapping (NIET in git)
 js/data.example.js  → Template met voorbeeldtitels (WEL in git)
-js/app.js           → Alle applicatielogica (~2030 regels)
+js/app.js           → Alle applicatielogica (~2163 regels)
 server.py           → Lokale Python server met /api/save en /api/state endpoints
 state.json          → User state: watched, ratings, order, tmdb_key, omdb_key (NIET in git)
 sw.js               → Service Worker (cache-first static, network-first posters)
@@ -89,39 +89,38 @@ border: 1px solid rgba(255,255,255,.08);
 | Star rating HTML helpers + ratingBlockHtml | ~165-213 |
 | View mode (grid/list) | ~215-222 |
 | DOM refs | ~224-236 |
-| populateDropdowns() (single-pass) | ~234-261 |
-| Dynamic dropdown counts | ~263-304 |
-| Toast notifications (showToast + undo) | ~306-328 |
-| Render (central, incl. empty-state + filter hints + scores) | ~330-534 |
-| Card click → openDetail() | ~518-523 |
-| toggleWatch (met confirm + toast + undo) | ~525-552 |
-| removeItem (met confirm + toast + undo) | ~554-587 |
+| populateDropdowns() (single-pass) | ~238-265 |
+| Dynamic dropdown counts | ~267-308 |
+| Toast notifications (showToast + undo) | ~310-332 |
+| Render (central, incl. empty-state + filter hints + scores) | ~334-510 |
+| Card click → openDetail() | ~512-522 |
+| toggleWatch (met confirm + toast + undo) | ~524-563 |
+| removeItem (met confirm + toast + undo) | ~565-598 |
 | updateStats | ~600-607 |
-| Star rating interaction | ~609-657 |
-| Sparkle effect (5 sterren) | ~659-676 |
-| Filters (type, status, genre, lang, sort, view toggle) | ~678-706 |
-| Mobile filter toggle | ~708-733 |
-| Stat pills als filter shortcuts | ~735-765 |
-| resetFilters() + resetFiltersKeepSearch() | ~735-765 |
-| h1 click reset | ~765 |
-| Search input + clear button | ~766-782 |
-| Hero poster mosaic builder | ~784-810 |
-| Add title modal + TMDB + IMDb fetch | ~811-900 |
-| Random picker | ~901-1026 |
-| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~1028-1170 |
-| Settings gear button + openSettings() | ~1172-1264 |
-| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1266-1344 |
-| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1346-1591 |
-| Filter badge (updateFilterBadge) | ~1593-1605 |
-| Centralized Escape key handler | ~1607-1619 |
-| Service Worker registratie | ~1616-1619 |
-| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1621-1692 |
-| RT + IMDb scores via OMDB (fetchRtScore, backfillRtScores) | ~1693-1741 |
-| refreshAllFromTmdb (one-time TMDB description refresh) | ~1743-1775 |
-| Recommendations (getTopRatedSeeds, fetchAndShowRecs, openRecs, addFromRecs) | ~1781-1999 |
-| Detail overlay (openDetail, closeDetail, detail event handlers) | ~2000-2120 |
-| Scroll to top + sticky controls | ~2121-2130 |
-| Init + loadState + backfill trigger | ~2132-2145 |
+| Star rating interaction | ~597-645 |
+| Sparkle effect (5 sterren) | ~647-664 |
+| Filters (type, status, genre, lang, sort, view toggle) | ~666-700 |
+| Mobile filter toggle | ~702-727 |
+| Stat pills als filter shortcuts | ~729-759 |
+| resetFilters() + resetFiltersKeepSearch() | ~729-770 |
+| Search input + clear button | ~760-777 |
+| Hero poster mosaic builder | ~772-798 |
+| Add title modal + TMDB + IMDb fetch | ~799-888 |
+| Random picker | ~889-1015 |
+| Drag-and-drop (desktop + touch) + reorderCustomOrder | ~1016-1158 |
+| Settings gear button + openSettings() | ~1160-1252 |
+| TMDB auto-complete (searchTmdb, mapTmdbLang) | ~1160-1332 |
+| Bulk import (searchTmdbSingle, buildItemFromTmdb, fetchImdbId) | ~1334-1579 |
+| Filter badge (updateFilterBadge) | ~1581-1593 |
+| Centralized Escape key handler | ~1595-1608 |
+| Service Worker registratie | ~1606-1617 |
+| IMDb backfill (searchTmdbTyped, bestTmdbMatch, backfillImdbIds) | ~1619-1689 |
+| RT + IMDb scores via OMDB (fetchRtScore, backfillRtScores) | ~1691-1739 |
+| refreshAllFromTmdb (one-time TMDB description refresh) | ~1741-1774 |
+| Recommendations (getTopRatedSeeds, fetchAndShowRecs, openRecs, addFromRecs) | ~1776-2015 |
+| Detail overlay (openDetail, closeDetail, detail event handlers) | ~2017-2137 |
+| Scroll to top + sticky controls | ~2139-2148 |
+| Init + loadState + backfill trigger | ~2150-2163 |
 
 ## Conventies
 
@@ -151,15 +150,16 @@ border: 1px solid rgba(255,255,255,.08);
 - Escape key sluit alle modals/overlays (centralized handler)
 - `render()` bewaart scroll positie via `window.scrollY`
 - `@media (prefers-reduced-motion: reduce)` schakelt alle animaties uit
-- Card-beschrijvingen afgekapt op 3 regels (grid, 2 op mobiel) / 2 regels (list, 1 op mobiel)
-- Klik op card opent detail overlay met volledige info (poster, metadata, scores, genres, beschrijving, links, acties, rating)
+- Grid cards tonen alleen poster + titel + jaar/scores; klik opent detail overlay met volledige info
+- Detail overlay: twee-koloms layout (poster + info), collapst naar single-column op mobiel; bevat metadata, scores, genres, beschrijving, IMDb/JustWatch links, watch/remove acties en interactieve sterrenrating
+- List view cards tonen nog volledige info (beschrijving, links, acties, rating)
 - Klik op "Mijn Kijklijst" h1 reset alle filters + zoekveld
 - Na toevoegen van titel: zoekbalk wordt gevuld met de titel zodat alleen die card zichtbaar is
 - Search clear-knop (✕) naast het zoekveld op desktop
-- Na bulk import worden alleen de net toegevoegde titels getoond; bij elke gebruikersinteractie verdwijnt dit filter
+- Na bulk import of aanbevelingen-toevoeging worden alleen de net toegevoegde titels getoond; bij elke gebruikersinteractie verdwijnt dit filter
 - IMDb rating (gele badge) en RT score (🍅) getoond op cards wanneer OMDB key geconfigureerd; scores gecached in localStorage (`kijklijst_rt_scores`)
 - Filterbalk is sticky (plakt bovenaan bij scrollen); `.controls-sticky` wrapper met `.stuck` class voor shadow-effect
-- Aanbevelingen modal (🎯 Tips): toont seed-attributie ("Vanwege X"), genre-tags en shuffle-knop
+- Aanbevelingen modal (🎯 Tips): toont seed-attributie ("Vanwege X"), genre-tags, klikbare posters/titels (TMDB link) en shuffle-knop
 
 ### IMDb auto-linking
 - `IMDB` object in `data.js` mapt titels → IMDb IDs
@@ -205,7 +205,7 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 ## Service Worker
 
 - Versie bijhouden in `CACHE_VERSION` (sw.js regel 1)
-- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v23'`
+- **Bump na elke wijziging** aan static assets → huidige versie: `'kijklijst-v25'`
 - `data.js` staat **niet** in STATIC_ASSETS (verandert bij elke add/remove)
 - Cache strategieën:
   - Static assets (excl. data.js) → cache-first
@@ -228,8 +228,8 @@ TMDB taalcodes → Nederlandse namen in `mapTmdbLang()`. Voeg nieuwe talen daar 
 Voeg emoji toe aan `GENRE_ICONS` in app.js. Zonder mapping werkt het alsnog (fallback 🎬).
 
 ### Responsive aanpassingen
-Grid: 5 kolommen desktop, 2 kolommen mobiel (≤600px). Posters in staand formaat (aspect-ratio 2/3).
-Breakpoints: `@media (max-width: 600px)` en `@media (max-width: 380px)` onderaan style.css.
+Grid: 6 kolommen desktop, 4 kolommen tablet (≤900px), 2 kolommen mobiel (≤600px). Posters in staand formaat (aspect-ratio 2/3).
+Breakpoints: `@media (max-width: 900px)`, `@media (max-width: 600px)` en `@media (max-width: 380px)` in style.css.
 
 ## Niet doen
 
